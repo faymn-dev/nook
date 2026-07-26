@@ -1,5 +1,5 @@
 package node
 
-type Node interface {
+type Renderer interface {
 	ToHTML() string
 }

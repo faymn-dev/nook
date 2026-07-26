@@ -9,14 +9,14 @@ import (
 func TestHTMLNodeToHTML(t *testing.T) {
 	type Example struct {
 		Name   string
-		Input  node.Node
+		Input  node.Renderer
 		Output string
 	}
 
 	examples := []Example{
 		{
 			Name:   "basic paragraph",
-			Input:  node.NewHTMLNode("p", node.HTMLProps{"data-test": "example"}, node.NewTextNode("hello world")),
+			Input:  node.NewHTMLNode("p", node.HTMLProps{"data-test": "example"}, node.TextNode("hello world")),
 			Output: "<p data-test=\"example\">hello world</p>",
 		},
 		{
@@ -27,6 +27,11 @@ func TestHTMLNodeToHTML(t *testing.T) {
 				),
 			),
 			Output: "<div><div><div></div></div></div>",
+		},
+		{
+			Name:   "",
+			Input:  node.NewHTMLNode("p", node.HTMLProps{"data-test": "example"}, node.TextNode("hello world")),
+			Output: "<p data-test=\"example\">hello world</p>",
 		},
 	}
 

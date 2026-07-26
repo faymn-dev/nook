@@ -10,10 +10,10 @@ type HTMLProps map[string]string
 type HTMLNode struct {
 	Tag      string
 	Props    HTMLProps
-	Children []Node
+	Children []Renderer
 }
 
-func NewHTMLNode(tag string, props HTMLProps, children ...Node) *HTMLNode {
+func NewHTMLNode(tag string, props HTMLProps, children ...Renderer) *HTMLNode {
 	return &HTMLNode{
 		Tag:      tag,
 		Props:    props,
@@ -22,6 +22,10 @@ func NewHTMLNode(tag string, props HTMLProps, children ...Node) *HTMLNode {
 }
 
 func (h *HTMLNode) ToHTML() string {
+	if h == nil {
+		return ""
+	}
+
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "<%s%s>", h.Tag, h.propsToHTML())
 	for _, child := range h.Children {
@@ -32,6 +36,10 @@ func (h *HTMLNode) ToHTML() string {
 }
 
 func (h *HTMLNode) propsToHTML() string {
+	if h == nil {
+		return ""
+	}
+
 	var sb strings.Builder
 	for key, value := range h.Props {
 		fmt.Fprintf(&sb, " %s=\"%s\"", key, value)

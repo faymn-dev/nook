@@ -88,14 +88,7 @@ blockLoop:
 }
 
 func handleHeading(block string) (Renderer, error) {
-	headingCount := 0
-	for char := range block {
-		if char == '#' {
-			headingCount += 1
-		} else {
-			break
-		}
-	}
+	headingCount := countPrefix(block, '#')
 	if headingCount > 6 {
 		// validate heading count
 		return nil, fmt.Errorf("invalid heading count - %d", headingCount)
@@ -208,31 +201,5 @@ func handleCodeBlock(block string) (Renderer, error) {
 }
 
 func handleText(text string) (Renderer, error) {
-	result := NewHTMLNode("span", nil)
-
-	delimiterStack := []rune{}
-
-	for len(text) > 0 {
-		char, size := utf8.DecodeRuneInString(text)
-
-		// switch get(2) {
-		// case "**":
-		// case "__":
-		// case "==":
-		// }
-		//
-		// switch get(1) {
-		// case "\\":
-		// case "*":
-		// case "_":
-		// case "!":
-		// case "[":
-		// case "<":
-		// case "`":
-		// }
-
-		text = text[size:]
-	}
-
-	return result, nil
+	panic("not implemented")
 }

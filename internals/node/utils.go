@@ -15,7 +15,7 @@ func countPrefix(text string, prefix rune) int {
 }
 
 func hasPrefix(block string, prefixes []string) bool {
-	if prefixes == nil || len(prefixes) == 0 {
+	if len(prefixes) == 0 {
 		return true
 	}
 

@@ -1,5 +1,7 @@
 package node
 
+import "unicode"
+
 type TokenVariant int
 
 const (
@@ -9,8 +11,11 @@ const (
 	TokenString
 
 	// block tokens
-	TokenCodeBlock         // ```
-	TokenCodeBlockLanguage // optional language specified after ```
+	TokenHeading          // #
+	TokenCodeBlock        // ```
+	TokenSeparator        // ---
+	TokenListItem         // -
+	TokenNumberedListItem // 1. or any number followed by a period
 
 	// inline tokens
 	TokenStar          // *
@@ -61,9 +66,28 @@ func Tokenize(markdown string) ([]token, error) {
 			} else {
 				l.commitToken(token{variant: TokenStar})
 			}
+		case '#':
+			value := string(l.collectWhile('#'))
+			l.commitToken(token{variant: TokenHeading, value: value})
+			// anytime we use collectWhile, we end on a different token
+			// we don't want to autoskip it, so next iteration
+			continue
+		case '-':
+			separator := l.collectWhile('-')
+			if len(separator) == 1 {
+				l.commitToken(token{variant: TokenListItem})
+			} else if len(separator) == 2 {
+				// just two dashes is just a word
+				l.addToWord('-')
+				l.addToWord('-')
+			} else {
+				l.commitToken(token{variant: TokenSeparator})
+			}
+			continue
 		case '`':
 			if l.peek() == '`' && l.peekOffset(2) == '`' {
 				// TODO should we care about 4 backtiks in a row?
+				// we can potentially reuse the collectWhile method to ensure it's a length of three?
 				l.commitToken(token{variant: TokenCodeBlock})
 				l.next() // skip current `
 				l.next() // skip peek `
@@ -96,7 +120,21 @@ func Tokenize(markdown string) ([]token, error) {
 		case ']':
 			l.commitToken(token{variant: TokenRBracket})
 		default:
-			l.addToWord(d)
+			if unicode.IsDigit(d) {
+				digits := l.collectWhileDigit()
+				if l.current() == '.' {
+					l.commitToken(token{variant: TokenNumberedListItem})
+					l.next() // skip current .
+				} else {
+					// it's not a list item, so just shove it into the word
+					for _, d := range digits {
+						l.addToWord(d)
+					}
+				}
+				continue
+			} else {
+				l.addToWord(d)
+			}
 		}
 
 		l.next()
@@ -122,6 +160,24 @@ func (l *lexer) addToWord(char rune) {
 // ============================================================
 // utilities for moving the cursor around
 // ============================================================
+
+func (l *lexer) collectWhile(target rune) []rune {
+	result := []rune{}
+	for l.hasCurrent() && l.current() == target {
+		result = append(result, target)
+		l.next()
+	}
+	return result
+}
+
+func (l *lexer) collectWhileDigit() []rune {
+	result := []rune{}
+	for l.hasCurrent() && unicode.IsDigit(l.current()) {
+		result = append(result, l.current())
+		l.next()
+	}
+	return result
+}
 
 func (l *lexer) hasNext() bool {
 	return l.cursor+1 < len(l.data)

@@ -147,6 +147,95 @@ func TestLexer(t *testing.T) {
 				{variant: TokenEOF},
 			},
 		},
+
+		// header
+		{
+			Name:  "basic header",
+			Input: "# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6\n####### Heading 7",
+			Output: []token{
+				{variant: TokenHeading, value: "#"},
+				{variant: TokenString, value: " Heading 1"},
+				{variant: TokenNewline},
+				{variant: TokenHeading, value: "##"},
+				{variant: TokenString, value: " Heading 2"},
+				{variant: TokenNewline},
+				{variant: TokenHeading, value: "###"},
+				{variant: TokenString, value: " Heading 3"},
+				{variant: TokenNewline},
+				{variant: TokenHeading, value: "####"},
+				{variant: TokenString, value: " Heading 4"},
+				{variant: TokenNewline},
+				{variant: TokenHeading, value: "#####"},
+				{variant: TokenString, value: " Heading 5"},
+				{variant: TokenNewline},
+				{variant: TokenHeading, value: "######"},
+				{variant: TokenString, value: " Heading 6"},
+				{variant: TokenNewline},
+				{variant: TokenHeading, value: "#######"},
+				{variant: TokenString, value: " Heading 7"},
+				{variant: TokenEOF},
+			},
+		},
+
+		// separators
+		{
+			Name:  "basic separator",
+			Input: "---",
+			Output: []token{
+				{variant: TokenSeparator},
+				{variant: TokenEOF},
+			},
+		},
+		{
+			Name:  "longer separator",
+			Input: "---------",
+			Output: []token{
+				{variant: TokenSeparator},
+				{variant: TokenEOF},
+			},
+		},
+		{
+			Name:  "not a separator",
+			Input: "--",
+			Output: []token{
+				{variant: TokenString, value: "--"},
+				{variant: TokenEOF},
+			},
+		},
+
+		// list items
+		{
+			Name:  "basic list",
+			Input: "- get apples\n- cheezits\n  - nested list item",
+			Output: []token{
+				{variant: TokenListItem},
+				{variant: TokenString, value: " get apples"},
+				{variant: TokenNewline},
+				{variant: TokenListItem},
+				{variant: TokenString, value: " cheezits"},
+				{variant: TokenNewline},
+				{variant: TokenString, value: "  "},
+				{variant: TokenListItem},
+				{variant: TokenString, value: " nested list item"},
+				{variant: TokenEOF},
+			},
+		},
+		{
+			Name:  "basic numbered list",
+			Input: "1. get apples\n2. cheezits\n  1. nested list item",
+			Output: []token{
+				{variant: TokenNumberedListItem},
+				{variant: TokenString, value: " get apples"},
+				{variant: TokenNewline},
+				{variant: TokenNumberedListItem},
+				{variant: TokenString, value: " cheezits"},
+				{variant: TokenNewline},
+				{variant: TokenString, value: "  "},
+				{variant: TokenNumberedListItem},
+				{variant: TokenString, value: " nested list item"},
+				{variant: TokenEOF},
+			},
+		},
 	}
 
 	for _, example := range examples {

@@ -9,7 +9,7 @@ func TestLexer(t *testing.T) {
 	type Example struct {
 		Name   string
 		Input  string
-		Output []token
+		Output []Token
 	}
 
 	examples := []Example{
@@ -17,7 +17,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "stars",
 			Input: "this should be *in italics* maybe",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenString, value: "this should be "},
 				{variant: TokenStar},
 				{variant: TokenString, value: "in italics"},
@@ -29,7 +29,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "stars alone",
 			Input: "*in italics*",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenStar},
 				{variant: TokenString, value: "in italics"},
 				{variant: TokenStar},
@@ -39,7 +39,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "stars at the end",
 			Input: "this should be *in italics*",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenString, value: "this should be "},
 				{variant: TokenStar},
 				{variant: TokenString, value: "in italics"},
@@ -50,7 +50,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "stars with newlines",
 			Input: "this should be *in\nitalics*",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenString, value: "this should be "},
 				{variant: TokenStar},
 				{variant: TokenString, value: "in"},
@@ -65,7 +65,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "inline code",
 			Input: "inline code `let x = 10`",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenString, value: "inline code "},
 				{variant: TokenCode},
 				{variant: TokenString, value: "let x = 10"},
@@ -76,7 +76,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "multiline code block",
 			Input: "```js\nlet x = 10;\nprint(x)\n```",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenCodeBlock},
 				// maybe this is a little silly that we don't just smash it all into the value of TokenCodeBlock
 				// imo the parser should handle everything, the lexer doesn't care about context
@@ -98,7 +98,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "basic strikethrough",
 			Input: "~~hello~~",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenStrikethrough},
 				{variant: TokenString, value: "hello"},
 				{variant: TokenStrikethrough},
@@ -110,7 +110,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "basic highlight",
 			Input: "==hello==",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenHighlight},
 				{variant: TokenString, value: "hello"},
 				{variant: TokenHighlight},
@@ -122,7 +122,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "link",
 			Input: "[look at this really cool link](https://google.com)",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenLBracket},
 				{variant: TokenString, value: "look at this really cool link"},
 				{variant: TokenRBracket},
@@ -135,7 +135,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "link with formatting",
 			Input: "[**bold this guy**](https://google.com)",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenLBracket},
 				{variant: TokenDoubleStar},
 				{variant: TokenString, value: "bold this guy"},
@@ -150,7 +150,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "image",
 			Input: "![alt text](https://google.com/favicon.ico)",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenBang},
 				{variant: TokenLBracket},
 				{variant: TokenString, value: "alt text"},
@@ -166,7 +166,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "basic header",
 			Input: "# Heading 1\n## Heading 2\n### Heading 3\n#### Heading 4\n##### Heading 5\n###### Heading 6\n####### Heading 7",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenHeading, value: "#"},
 				{variant: TokenString, value: " Heading 1"},
 				{variant: TokenNewline},
@@ -195,7 +195,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "basic separator",
 			Input: "---",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenSeparator},
 				{variant: TokenEOF},
 			},
@@ -203,7 +203,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "longer separator",
 			Input: "---------",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenSeparator},
 				{variant: TokenEOF},
 			},
@@ -211,7 +211,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "not a separator",
 			Input: "--",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenString, value: "--"},
 				{variant: TokenEOF},
 			},
@@ -221,7 +221,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "basic list",
 			Input: "- get apples\n- cheezits\n  - nested list item",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenListItem},
 				{variant: TokenString, value: " get apples"},
 				{variant: TokenNewline},
@@ -237,7 +237,7 @@ func TestLexer(t *testing.T) {
 		{
 			Name:  "basic numbered list",
 			Input: "1. get apples\n2. cheezits\n  1. nested list item",
-			Output: []token{
+			Output: []Token{
 				{variant: TokenNumberedListItem},
 				{variant: TokenString, value: " get apples"},
 				{variant: TokenNewline},
@@ -253,12 +253,7 @@ func TestLexer(t *testing.T) {
 	}
 
 	for _, example := range examples {
-		output, err := Tokenize(example.Input)
-		if err != nil {
-			t.Errorf("%s: failed to process input: %v", example.Name, err)
-			continue
-		}
-
+		output := Tokenize(example.Input)
 		if !slices.Equal(example.Output, output) {
 			t.Errorf("%s: expected %v, got %v", example.Name, example.Output, output)
 		}

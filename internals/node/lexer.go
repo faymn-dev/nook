@@ -1,6 +1,8 @@
 package node
 
-import "unicode"
+import (
+	"unicode"
+)
 
 type TokenVariant int
 
@@ -36,44 +38,40 @@ type Token struct {
 }
 
 type lexer struct {
-	data   []rune
-	cursor int
+	Stream[rune]
 
 	result []Token
 	word   []rune
 }
 
-func newLexer(markdown string) *lexer {
-	return &lexer{
-		data: []rune(markdown),
+func Tokenize(markdown string) []Token {
+	l := &lexer{
+		Stream: Stream[rune]{
+			data: []rune(markdown),
+		},
 	}
-}
-
-func Tokenize(markdown string) ([]Token, error) {
-	l := newLexer(markdown)
 	// return nil, fmt.Errorf("unexpected character %q at line %d, column %d", l.current(), l.line, l.column)
 
-	for l.hasCurrent() {
-		d := l.current()
+	for l.HasData() {
+		current := l.Current()
 
-		switch d {
+		switch current {
 		case '\n':
 			l.commitToken(Token{variant: TokenNewline})
 		case '*':
-			if l.peek() == '*' {
+			if l.Peek() == '*' {
 				l.commitToken(Token{variant: TokenDoubleStar})
-				l.next() // skip current *
+				l.Next() // skip current *
 			} else {
 				l.commitToken(Token{variant: TokenStar})
 			}
 		case '#':
-			value := string(l.collectWhile('#'))
-			l.commitToken(Token{variant: TokenHeading, value: value})
+			l.commitToken(Token{variant: TokenHeading, value: string(l.CollectWhile('#'))})
 			// anytime we use collectWhile, we end on a different token
 			// we don't want to autoskip it, so next iteration
 			continue
 		case '-':
-			separator := l.collectWhile('-')
+			separator := l.CollectWhile('-')
 			if len(separator) == 1 {
 				l.commitToken(Token{variant: TokenListItem})
 			} else if len(separator) == 2 {
@@ -85,29 +83,29 @@ func Tokenize(markdown string) ([]Token, error) {
 			}
 			continue
 		case '`':
-			if l.peek() == '`' && l.peekOffset(2) == '`' {
+			if l.MatchAhead('`', '`') {
 				// TODO should we care about 4 backtiks in a row?
 				// we can potentially reuse the collectWhile method to ensure it's a length of three?
 				l.commitToken(Token{variant: TokenCodeBlock})
-				l.next() // skip current `
-				l.next() // skip peek `
+				l.Next() // skip current `
+				l.Next() // skip peek `
 			} else {
 				l.commitToken(Token{variant: TokenCode})
 			}
 		case '~':
-			if l.peek() == '~' {
+			if l.Peek() == '~' {
 				l.commitToken(Token{variant: TokenStrikethrough})
-				l.next() // skip current ~
+				l.Next() // skip current ~
 			} else {
 				// not a strike through, so add it to the word normally
-				l.addToWord(d)
+				l.addToWord(current)
 			}
 		case '=':
-			if l.peek() == '=' {
+			if l.Peek() == '=' {
 				l.commitToken(Token{variant: TokenHighlight})
-				l.next() // skip current =
+				l.Next() // skip current =
 			} else {
-				l.addToWord(d)
+				l.addToWord(current)
 			}
 		case '!':
 			l.commitToken(Token{variant: TokenBang})
@@ -120,29 +118,29 @@ func Tokenize(markdown string) ([]Token, error) {
 		case ']':
 			l.commitToken(Token{variant: TokenRBracket})
 		default:
-			if unicode.IsDigit(d) {
+			if unicode.IsDigit(current) {
 				digits := l.collectWhileDigit()
-				if l.current() == '.' {
+				if l.Current() == '.' {
 					l.commitToken(Token{variant: TokenNumberedListItem})
-					l.next() // skip current .
+					l.Next() // skip current .
 				} else {
 					// it's not a list item, so just shove it into the word
-					for _, d := range digits {
-						l.addToWord(d)
+					for _, digit := range digits {
+						l.addToWord(digit)
 					}
 				}
 				continue
 			} else {
-				l.addToWord(d)
+				l.addToWord(current)
 			}
 		}
 
-		l.next()
+		l.Next()
 	}
 
 	l.commitToken(Token{variant: TokenEOF})
 
-	return l.result, nil
+	return l.result
 }
 
 func (l *lexer) commitToken(t Token) {
@@ -157,55 +155,11 @@ func (l *lexer) addToWord(char rune) {
 	l.word = append(l.word, char)
 }
 
-// ============================================================
-// utilities for moving the cursor around
-// ============================================================
-
-func (l *lexer) collectWhile(target rune) []rune {
-	result := []rune{}
-	for l.hasCurrent() && l.current() == target {
-		result = append(result, target)
-		l.next()
-	}
-	return result
-}
-
 func (l *lexer) collectWhileDigit() []rune {
 	result := []rune{}
-	for l.hasCurrent() && unicode.IsDigit(l.current()) {
-		result = append(result, l.current())
-		l.next()
+	for l.HasData() && unicode.IsDigit(l.Current()) {
+		result = append(result, l.Current())
+		l.Next()
 	}
 	return result
-}
-
-func (l *lexer) hasNext() bool {
-	return l.cursor+1 < len(l.data)
-}
-
-func (l *lexer) hasCurrent() bool {
-	return l.cursor < len(l.data)
-}
-
-func (l *lexer) current() rune {
-	if l.hasCurrent() {
-		return l.data[l.cursor]
-	}
-	return 0
-}
-
-func (l *lexer) next() rune {
-	l.cursor++
-	return l.current()
-}
-
-func (l *lexer) peek() rune {
-	return l.peekOffset(1)
-}
-
-func (l *lexer) peekOffset(offset int) rune {
-	if l.hasNext() {
-		return l.data[l.cursor+offset]
-	}
-	return 0
 }

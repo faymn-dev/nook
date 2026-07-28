@@ -1,23 +1,80 @@
 package node
 
+import (
+	"fmt"
+	"strings"
+)
+
 func Parse(tokens []Token) (Renderer, error) {
-	document := NewHTMLNode("div", nil)
 	p := &parser{
 		Stream: Stream[Token]{
 			data: tokens,
 		},
+		document: NewHTMLNode("div", nil),
 	}
 
 	for p.HasData() {
+		current := p.Current()
+
+		switch current.Variant {
+		case TokenNewline:
+		case TokenString:
+			p.appendChild(NewHTMLNode("p", nil, TextNode(strings.TrimSpace(current.Value))))
+			if strings.HasSuffix(current.Value, "  ") {
+				p.appendChild(NewHTMLNode("br", nil))
+			}
+		case TokenHeading:
+			textContent, err := p.expectTokenVariant(TokenString)
+			if err != nil {
+				return nil, err
+			}
+
+			level := len(current.Value)
+			if level > 7 {
+				return nil, fmt.Errorf("headings cannot be greater than level 7 %s", p.location())
+			}
+
+			p.appendChild(NewHTMLNode(fmt.Sprintf("h%d", level), nil, TextNode(strings.TrimSpace(textContent.Value))))
+		}
+
 		p.Next()
 	}
 
-	return document, nil
+	return p.document, nil
 }
 
 type parser struct {
 	Stream[Token]
 
+	document *HTMLNode
+
 	line   int
 	column int
+}
+
+func (p *parser) appendChild(node Renderer) {
+	p.document.Children = append(p.document.Children, node)
+}
+
+func (p *parser) checkForNewline() {
+	current := p.Current()
+	if current.Variant == TokenNewline {
+		p.line++
+		p.column = 0
+	} else {
+		p.column++
+	}
+}
+
+func (p *parser) expectTokenVariant(variant TokenVariant) (Token, error) {
+	actualToken := p.Current()
+	if actualToken.Variant == variant {
+		p.Next()
+		return actualToken, nil
+	}
+	return Token{}, fmt.Errorf("unexpected token %v %s", actualToken, p.location())
+}
+
+func (p *parser) location() string {
+	return fmt.Sprintf("at line %d, column %d", p.line, p.column)
 }

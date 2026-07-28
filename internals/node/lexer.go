@@ -34,8 +34,8 @@ const (
 )
 
 type Token struct {
-	variant TokenVariant
-	value   string
+	Variant TokenVariant
+	Value   string
 }
 
 type lexer struct {
@@ -58,44 +58,44 @@ func Tokenize(markdown string) []Token {
 
 		switch current {
 		case '\n':
-			l.commitToken(Token{variant: TokenNewline})
+			l.commitToken(Token{Variant: TokenNewline})
 		case '*':
 			if l.Peek() == '*' {
-				l.commitToken(Token{variant: TokenDoubleStar})
+				l.commitToken(Token{Variant: TokenDoubleStar})
 				l.Next() // skip current *
 			} else {
-				l.commitToken(Token{variant: TokenStar})
+				l.commitToken(Token{Variant: TokenStar})
 			}
 		case '#':
-			l.commitToken(Token{variant: TokenHeading, value: string(l.CollectWhile('#'))})
+			l.commitToken(Token{Variant: TokenHeading, Value: string(l.CollectWhile('#'))})
 			// anytime we use collectWhile, we end on a different token
 			// we don't want to autoskip it, so next iteration
 			continue
 		case '-':
 			separator := l.CollectWhile('-')
 			if len(separator) == 1 {
-				l.commitToken(Token{variant: TokenListItem})
+				l.commitToken(Token{Variant: TokenListItem})
 			} else if len(separator) == 2 {
 				// just two dashes is just a word
 				l.addToWord('-')
 				l.addToWord('-')
 			} else {
-				l.commitToken(Token{variant: TokenSeparator})
+				l.commitToken(Token{Variant: TokenSeparator})
 			}
 			continue
 		case '`':
 			if l.MatchAhead('`', '`') {
 				// TODO should we care about 4 backtiks in a row?
 				// we can potentially reuse the collectWhile method to ensure it's a length of three?
-				l.commitToken(Token{variant: TokenCodeBlock})
+				l.commitToken(Token{Variant: TokenCodeBlock})
 				l.Next() // skip current `
 				l.Next() // skip peek `
 			} else {
-				l.commitToken(Token{variant: TokenCode})
+				l.commitToken(Token{Variant: TokenCode})
 			}
 		case '~':
 			if l.Peek() == '~' {
-				l.commitToken(Token{variant: TokenStrikethrough})
+				l.commitToken(Token{Variant: TokenStrikethrough})
 				l.Next() // skip current ~
 			} else {
 				// not a strike through, so add it to the word normally
@@ -103,25 +103,25 @@ func Tokenize(markdown string) []Token {
 			}
 		case '=':
 			if l.Peek() == '=' {
-				l.commitToken(Token{variant: TokenHighlight})
+				l.commitToken(Token{Variant: TokenHighlight})
 				l.Next() // skip current =
 			} else {
 				l.addToWord(current)
 			}
 		case '!':
-			l.commitToken(Token{variant: TokenBang})
+			l.commitToken(Token{Variant: TokenBang})
 		case '(':
-			l.commitToken(Token{variant: TokenLParen})
+			l.commitToken(Token{Variant: TokenLParen})
 		case ')':
-			l.commitToken(Token{variant: TokenRParen})
+			l.commitToken(Token{Variant: TokenRParen})
 		case '[':
-			l.commitToken(Token{variant: TokenLBracket})
+			l.commitToken(Token{Variant: TokenLBracket})
 		case ']':
-			l.commitToken(Token{variant: TokenRBracket})
+			l.commitToken(Token{Variant: TokenRBracket})
 		case '\\':
 			if l.HasNext() {
 				l.Next()
-				l.commitToken(Token{variant: TokenEscape, value: string(l.Current())})
+				l.commitToken(Token{Variant: TokenEscape, Value: string(l.Current())})
 			} else {
 				// you escaped... nothing, because nothing is left
 				l.addToWord(current)
@@ -130,7 +130,7 @@ func Tokenize(markdown string) []Token {
 			if unicode.IsDigit(current) {
 				digits := l.collectWhileDigit()
 				if l.Current() == '.' {
-					l.commitToken(Token{variant: TokenNumberedListItem})
+					l.commitToken(Token{Variant: TokenNumberedListItem})
 					l.Next() // skip current .
 				} else {
 					// it's not a list item, so just shove it into the word
@@ -147,14 +147,14 @@ func Tokenize(markdown string) []Token {
 		l.Next()
 	}
 
-	l.commitToken(Token{variant: TokenEOF})
+	l.commitToken(Token{Variant: TokenEOF})
 
 	return l.result
 }
 
 func (l *lexer) commitToken(t Token) {
 	if len(l.word) > 0 {
-		l.result = append(l.result, Token{variant: TokenString, value: string(l.word)})
+		l.result = append(l.result, Token{Variant: TokenString, Value: string(l.word)})
 	}
 	l.result = append(l.result, t)
 	l.word = []rune{}

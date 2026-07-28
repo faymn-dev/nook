@@ -30,7 +30,7 @@ const (
 	TokenRBracket      // ]
 )
 
-type token struct {
+type Token struct {
 	variant TokenVariant
 	value   string
 }
@@ -39,7 +39,7 @@ type lexer struct {
 	data   []rune
 	cursor int
 
-	result []token
+	result []Token
 	word   []rune
 }
 
@@ -49,7 +49,7 @@ func newLexer(markdown string) *lexer {
 	}
 }
 
-func Tokenize(markdown string) ([]token, error) {
+func Tokenize(markdown string) ([]Token, error) {
 	l := newLexer(markdown)
 	// return nil, fmt.Errorf("unexpected character %q at line %d, column %d", l.current(), l.line, l.column)
 
@@ -58,45 +58,45 @@ func Tokenize(markdown string) ([]token, error) {
 
 		switch d {
 		case '\n':
-			l.commitToken(token{variant: TokenNewline})
+			l.commitToken(Token{variant: TokenNewline})
 		case '*':
 			if l.peek() == '*' {
-				l.commitToken(token{variant: TokenDoubleStar})
+				l.commitToken(Token{variant: TokenDoubleStar})
 				l.next() // skip current *
 			} else {
-				l.commitToken(token{variant: TokenStar})
+				l.commitToken(Token{variant: TokenStar})
 			}
 		case '#':
 			value := string(l.collectWhile('#'))
-			l.commitToken(token{variant: TokenHeading, value: value})
+			l.commitToken(Token{variant: TokenHeading, value: value})
 			// anytime we use collectWhile, we end on a different token
 			// we don't want to autoskip it, so next iteration
 			continue
 		case '-':
 			separator := l.collectWhile('-')
 			if len(separator) == 1 {
-				l.commitToken(token{variant: TokenListItem})
+				l.commitToken(Token{variant: TokenListItem})
 			} else if len(separator) == 2 {
 				// just two dashes is just a word
 				l.addToWord('-')
 				l.addToWord('-')
 			} else {
-				l.commitToken(token{variant: TokenSeparator})
+				l.commitToken(Token{variant: TokenSeparator})
 			}
 			continue
 		case '`':
 			if l.peek() == '`' && l.peekOffset(2) == '`' {
 				// TODO should we care about 4 backtiks in a row?
 				// we can potentially reuse the collectWhile method to ensure it's a length of three?
-				l.commitToken(token{variant: TokenCodeBlock})
+				l.commitToken(Token{variant: TokenCodeBlock})
 				l.next() // skip current `
 				l.next() // skip peek `
 			} else {
-				l.commitToken(token{variant: TokenCode})
+				l.commitToken(Token{variant: TokenCode})
 			}
 		case '~':
 			if l.peek() == '~' {
-				l.commitToken(token{variant: TokenStrikethrough})
+				l.commitToken(Token{variant: TokenStrikethrough})
 				l.next() // skip current ~
 			} else {
 				// not a strike through, so add it to the word normally
@@ -104,26 +104,26 @@ func Tokenize(markdown string) ([]token, error) {
 			}
 		case '=':
 			if l.peek() == '=' {
-				l.commitToken(token{variant: TokenHighlight})
+				l.commitToken(Token{variant: TokenHighlight})
 				l.next() // skip current =
 			} else {
 				l.addToWord(d)
 			}
 		case '!':
-			l.commitToken(token{variant: TokenBang})
+			l.commitToken(Token{variant: TokenBang})
 		case '(':
-			l.commitToken(token{variant: TokenLParen})
+			l.commitToken(Token{variant: TokenLParen})
 		case ')':
-			l.commitToken(token{variant: TokenRParen})
+			l.commitToken(Token{variant: TokenRParen})
 		case '[':
-			l.commitToken(token{variant: TokenLBracket})
+			l.commitToken(Token{variant: TokenLBracket})
 		case ']':
-			l.commitToken(token{variant: TokenRBracket})
+			l.commitToken(Token{variant: TokenRBracket})
 		default:
 			if unicode.IsDigit(d) {
 				digits := l.collectWhileDigit()
 				if l.current() == '.' {
-					l.commitToken(token{variant: TokenNumberedListItem})
+					l.commitToken(Token{variant: TokenNumberedListItem})
 					l.next() // skip current .
 				} else {
 					// it's not a list item, so just shove it into the word
@@ -140,14 +140,14 @@ func Tokenize(markdown string) ([]token, error) {
 		l.next()
 	}
 
-	l.commitToken(token{variant: TokenEOF})
+	l.commitToken(Token{variant: TokenEOF})
 
 	return l.result, nil
 }
 
-func (l *lexer) commitToken(t token) {
+func (l *lexer) commitToken(t Token) {
 	if len(l.word) > 0 {
-		l.result = append(l.result, token{variant: TokenString, value: string(l.word)})
+		l.result = append(l.result, Token{variant: TokenString, value: string(l.word)})
 	}
 	l.result = append(l.result, t)
 	l.word = []rune{}

@@ -147,6 +147,20 @@ func TestLexer(t *testing.T) {
 				{variant: TokenEOF},
 			},
 		},
+		{
+			Name:  "image",
+			Input: "![alt text](https://google.com/favicon.ico)",
+			Output: []token{
+				{variant: TokenBang},
+				{variant: TokenLBracket},
+				{variant: TokenString, value: "alt text"},
+				{variant: TokenRBracket},
+				{variant: TokenLParen},
+				{variant: TokenString, value: "https://google.com/favicon.ico"},
+				{variant: TokenRParen},
+				{variant: TokenEOF},
+			},
+		},
 
 		// header
 		{

@@ -9,12 +9,20 @@ const (
 	TokenString
 
 	// block tokens
-	TokenCodeBlock // ```
+	TokenCodeBlock         // ```
+	TokenCodeBlockLanguage // optional language specified after ```
 
 	// inline tokens
-	TokenStar       // *
-	TokenDoubleStar // **
-	TokenCode       // `
+	TokenStar          // *
+	TokenDoubleStar    // **
+	TokenCode          // `
+	TokenStrikethrough // ~~
+	TokenHighlight     // ==
+	TokenBang          // !
+	TokenLParen        // (
+	TokenRParen        // )
+	TokenLBracket      // [
+	TokenRBracket      // ]
 )
 
 type token struct {
@@ -62,6 +70,31 @@ func Tokenize(markdown string) ([]token, error) {
 			} else {
 				l.commitToken(token{variant: TokenCode})
 			}
+		case '~':
+			if l.peek() == '~' {
+				l.commitToken(token{variant: TokenStrikethrough})
+				l.next() // skip current ~
+			} else {
+				// not a strike through, so add it to the word normally
+				l.addToWord(d)
+			}
+		case '=':
+			if l.peek() == '=' {
+				l.commitToken(token{variant: TokenHighlight})
+				l.next() // skip current =
+			} else {
+				l.addToWord(d)
+			}
+		case '!':
+			l.commitToken(token{variant: TokenBang})
+		case '(':
+			l.commitToken(token{variant: TokenLParen})
+		case ')':
+			l.commitToken(token{variant: TokenRParen})
+		case '[':
+			l.commitToken(token{variant: TokenLBracket})
+		case ']':
+			l.commitToken(token{variant: TokenRBracket})
 		default:
 			l.addToWord(d)
 		}

@@ -78,13 +78,72 @@ func TestLexer(t *testing.T) {
 			Input: "```js\nlet x = 10;\nprint(x)\n```",
 			Output: []token{
 				{variant: TokenCodeBlock},
+				// maybe this is a little silly that we don't just smash it all into the value of TokenCodeBlock
+				// imo the parser should handle everything, the lexer doesn't care about context
 				{variant: TokenString, value: "js"},
 				{variant: TokenNewline},
 				{variant: TokenString, value: "let x = 10;"},
 				{variant: TokenNewline},
-				{variant: TokenString, value: "print(x)"},
+				{variant: TokenString, value: "print"},
+				{variant: TokenLParen},
+				{variant: TokenString, value: "x"},
+				{variant: TokenRParen},
 				{variant: TokenNewline},
 				{variant: TokenCodeBlock},
+				{variant: TokenEOF},
+			},
+		},
+
+		// strike through
+		{
+			Name:  "basic strikethrough",
+			Input: "~~hello~~",
+			Output: []token{
+				{variant: TokenStrikethrough},
+				{variant: TokenString, value: "hello"},
+				{variant: TokenStrikethrough},
+				{variant: TokenEOF},
+			},
+		},
+
+		// highlight
+		{
+			Name:  "basic highlight",
+			Input: "==hello==",
+			Output: []token{
+				{variant: TokenHighlight},
+				{variant: TokenString, value: "hello"},
+				{variant: TokenHighlight},
+				{variant: TokenEOF},
+			},
+		},
+
+		// links and images
+		{
+			Name:  "link",
+			Input: "[look at this really cool link](https://google.com)",
+			Output: []token{
+				{variant: TokenLBracket},
+				{variant: TokenString, value: "look at this really cool link"},
+				{variant: TokenRBracket},
+				{variant: TokenLParen},
+				{variant: TokenString, value: "https://google.com"},
+				{variant: TokenRParen},
+				{variant: TokenEOF},
+			},
+		},
+		{
+			Name:  "link with formatting",
+			Input: "[**bold this guy**](https://google.com)",
+			Output: []token{
+				{variant: TokenLBracket},
+				{variant: TokenDoubleStar},
+				{variant: TokenString, value: "bold this guy"},
+				{variant: TokenDoubleStar},
+				{variant: TokenRBracket},
+				{variant: TokenLParen},
+				{variant: TokenString, value: "https://google.com"},
+				{variant: TokenRParen},
 				{variant: TokenEOF},
 			},
 		},

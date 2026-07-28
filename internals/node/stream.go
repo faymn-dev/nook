@@ -40,9 +40,22 @@ func (s *Stream[T]) PeekOffset(offset int) T {
 	return zero
 }
 
+// when using this method, you probably don't want to call .Next()
+// because the last token you'll be on is the token AFTER target
 func (s *Stream[T]) CollectWhile(target T) []T {
 	result := []T{}
 	for s.HasData() && s.Current() == target {
+		result = append(result, target)
+		s.Next()
+	}
+	return result
+}
+
+// when using this method, you probably don't want to call .Next()
+// because the last token you'll be on is the token AFTER target
+func (s *Stream[T]) CollectUntil(target T) []T {
+	result := []T{}
+	for s.HasData() && s.Current() != target {
 		result = append(result, target)
 		s.Next()
 	}

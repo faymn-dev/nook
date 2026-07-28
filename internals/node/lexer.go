@@ -9,6 +9,7 @@ type TokenVariant int
 const (
 	TokenEOF TokenVariant = iota
 
+	TokenIndent
 	TokenNewline
 	TokenString
 
@@ -38,6 +39,34 @@ type Token struct {
 	Value   string
 }
 
+var tokenVariantToString = map[TokenVariant]string{
+	TokenIndent:        "  ",
+	TokenNewline:       "\n",
+	TokenCodeBlock:     "```",
+	TokenListItem:      "-",
+	TokenStar:          "*",
+	TokenDoubleStar:    "**",
+	TokenCode:          "`",
+	TokenStrikethrough: "~~",
+	TokenHighlight:     "==",
+	TokenBang:          "!",
+	TokenLParen:        "(",
+	TokenRParen:        ")",
+	TokenLBracket:      "[",
+	TokenRBracket:      "]",
+}
+
+func (t Token) String() string {
+	// yet another layer of ducktape to make this work
+	// ideally, the value would just be on the token
+	// default to retrieve from map, otherwise use token value
+	value, ok := tokenVariantToString[t.Variant]
+	if len(t.Value) == 0 && ok {
+		return value
+	}
+	return t.Value
+}
+
 type lexer struct {
 	Stream[rune]
 
@@ -59,6 +88,13 @@ func Tokenize(markdown string) []Token {
 		switch current {
 		case '\n':
 			l.commitToken(Token{Variant: TokenNewline})
+		case ' ':
+			if l.Peek() == ' ' {
+				l.commitToken(Token{Variant: TokenIndent})
+				l.Next() // skip current ' '
+			} else {
+				l.addToWord(current)
+			}
 		case '*':
 			if l.Peek() == '*' {
 				l.commitToken(Token{Variant: TokenDoubleStar})
@@ -80,7 +116,7 @@ func Tokenize(markdown string) []Token {
 				l.addToWord('-')
 				l.addToWord('-')
 			} else {
-				l.commitToken(Token{Variant: TokenSeparator})
+				l.commitToken(Token{Variant: TokenSeparator, Value: string(separator)})
 			}
 			continue
 		case '`':
@@ -130,7 +166,7 @@ func Tokenize(markdown string) []Token {
 			if unicode.IsDigit(current) {
 				digits := l.collectWhileDigit()
 				if l.Current() == '.' {
-					l.commitToken(Token{Variant: TokenNumberedListItem})
+					l.commitToken(Token{Variant: TokenNumberedListItem, Value: string(digits) + "."})
 					l.Next() // skip current .
 				} else {
 					// it's not a list item, so just shove it into the word

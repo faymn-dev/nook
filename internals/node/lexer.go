@@ -8,9 +8,13 @@ const (
 	TokenNewline
 	TokenString
 
+	// block tokens
+	TokenCodeBlock // ```
+
 	// inline tokens
-	TokenStar
-	TokenDoubleStar
+	TokenStar       // *
+	TokenDoubleStar // **
+	TokenCode       // `
 )
 
 type token struct {
@@ -32,25 +36,34 @@ func newLexer(markdown string) *lexer {
 	}
 }
 
-func lex(markdown string) ([]token, error) {
+func Tokenize(markdown string) ([]token, error) {
 	l := newLexer(markdown)
 	// return nil, fmt.Errorf("unexpected character %q at line %d, column %d", l.current(), l.line, l.column)
 
 	for l.hasCurrent() {
 		d := l.current()
 
-		if d == '\n' {
+		switch d {
+		case '\n':
 			l.commitToken(token{variant: TokenNewline})
-		} else if d == '*' {
+		case '*':
 			if l.peek() == '*' {
 				l.commitToken(token{variant: TokenDoubleStar})
-				l.next() // skip over current *
+				l.next() // skip current *
 			} else {
 				l.commitToken(token{variant: TokenStar})
 			}
-		} else {
-			// add to word
-			l.word = append(l.word, d)
+		case '`':
+			if l.peek() == '`' && l.peekOffset(2) == '`' {
+				// TODO should we care about 4 backtiks in a row?
+				l.commitToken(token{variant: TokenCodeBlock})
+				l.next() // skip current `
+				l.next() // skip peek `
+			} else {
+				l.commitToken(token{variant: TokenCode})
+			}
+		default:
+			l.addToWord(d)
 		}
 
 		l.next()
@@ -67,6 +80,10 @@ func (l *lexer) commitToken(t token) {
 	}
 	l.result = append(l.result, t)
 	l.word = []rune{}
+}
+
+func (l *lexer) addToWord(char rune) {
+	l.word = append(l.word, char)
 }
 
 // ============================================================
@@ -94,8 +111,12 @@ func (l *lexer) next() rune {
 }
 
 func (l *lexer) peek() rune {
+	return l.peekOffset(1)
+}
+
+func (l *lexer) peekOffset(offset int) rune {
 	if l.hasNext() {
-		return l.data[l.cursor+1]
+		return l.data[l.cursor+offset]
 	}
 	return 0
 }

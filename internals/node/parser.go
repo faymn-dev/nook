@@ -1,17 +1,23 @@
 package node
 
-// func Parse(tokens []Token) {
-// 	p := &parser{
-// 		Stream: Stream[Token]{
-// 			data: tokens,
-// 		},
-// 	}
-//
-// 	for _, ok := p.Current(); ok; _ {
-//
-// 	}
-// }
-//
-// type parser struct {
-// 	Stream[Token]
-// }
+func Parse(tokens []Token) (Renderer, error) {
+	document := NewHTMLNode("div", nil)
+	p := &parser{
+		Stream: Stream[Token]{
+			data: tokens,
+		},
+	}
+
+	for p.HasData() {
+		p.Next()
+	}
+
+	return document, nil
+}
+
+type parser struct {
+	Stream[Token]
+
+	line   int
+	column int
+}

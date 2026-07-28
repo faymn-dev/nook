@@ -30,6 +30,7 @@ const (
 	TokenRParen        // )
 	TokenLBracket      // [
 	TokenRBracket      // ]
+	TokenEscape        // \whatever
 )
 
 type Token struct {
@@ -117,6 +118,14 @@ func Tokenize(markdown string) []Token {
 			l.commitToken(Token{variant: TokenLBracket})
 		case ']':
 			l.commitToken(Token{variant: TokenRBracket})
+		case '\\':
+			if l.HasNext() {
+				l.Next()
+				l.commitToken(Token{variant: TokenEscape, value: string(l.Current())})
+			} else {
+				// you escaped... nothing, because nothing is left
+				l.addToWord(current)
+			}
 		default:
 			if unicode.IsDigit(current) {
 				digits := l.collectWhileDigit()

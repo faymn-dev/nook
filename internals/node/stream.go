@@ -14,6 +14,10 @@ func (s *Stream[T]) HasData() bool {
 	return len(s.data) > 0
 }
 
+func (s *Stream[T]) HasNext() bool {
+	return len(s.data) > 1
+}
+
 func (s *Stream[T]) Current() T {
 	if s.HasData() {
 		return s.data[0]

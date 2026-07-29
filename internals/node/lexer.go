@@ -41,7 +41,6 @@ type Token struct {
 }
 
 var tokenVariantToString = map[TokenVariant]string{
-	TokenIndent:        "  ",
 	TokenNewline:       "\n",
 	TokenCodeBlock:     "```",
 	TokenListItem:      "-",
@@ -91,9 +90,9 @@ func Tokenize(markdown string) []Token {
 		case '\n':
 			l.commitToken(Token{Variant: TokenNewline})
 		case ' ':
-			if l.Peek() == ' ' {
-				l.commitToken(Token{Variant: TokenIndent})
-				l.Next() // skip current ' '
+			if l.Peek() == ' ' { // anything more than two spaces is considered indentation
+				l.commitToken(Token{Variant: TokenIndent, Value: string(l.collectWhile(' '))})
+				continue
 			} else {
 				l.addToWord(current)
 			}

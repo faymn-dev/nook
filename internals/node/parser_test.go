@@ -94,11 +94,11 @@ func TestParser(t *testing.T) {
 				{Variant: TokenString, Value: " list item 2"},
 				{Variant: TokenNewline},
 
-				{Variant: TokenIndent},
+				{Variant: TokenIndent, Value: "  "},
 				{Variant: TokenListItem},
 				{Variant: TokenString, Value: " list item 2a"},
 				{Variant: TokenNewline},
-				{Variant: TokenIndent},
+				{Variant: TokenIndent, Value: "  "},
 				{Variant: TokenListItem},
 				{Variant: TokenString, Value: " list item 2b"},
 				{Variant: TokenNewline},

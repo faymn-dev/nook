@@ -68,14 +68,15 @@ loop:
 			ctx := &listContext{list: parentList, level: 0}
 
 			for ctx != nil {
-				// calculate indentation
-				indents, err := p.collectUntil(TokenListItem)
 				level := 0
-				for _, token := range indents {
-					if token.Variant != TokenIndent {
-						return nil, fmt.Errorf("expected indent token %s", p.errorAt())
-					}
-					level++
+				if p.Current().Variant == TokenIndent {
+					level = len(p.Current().Value)
+					p.consume() // skip indentation
+				}
+
+				if _, err := p.expectCurrentToken(TokenListItem); err != nil {
+					return nil, fmt.Errorf("expected list item token %s", p.errorAt())
+
 				}
 				p.consume() // skip list item
 
@@ -90,6 +91,8 @@ loop:
 				if level == ctx.level {
 					ctx.list.Children = append(ctx.list.Children, liNode)
 				} else if level > ctx.level {
+					// this is genuinely terrible to reason about
+					// it's reactive parsing
 					childListNode := NewHTMLNode("ul", nil)
 					childListNode.Children = append(childListNode.Children, liNode)
 					lastLiNode := ctx.list.Children[len(ctx.list.Children)-1].(*HTMLNode)

@@ -8,6 +8,94 @@ import (
 	"github.com/faymn-dev/initiator/internals/node"
 )
 
+func TestInlineParser(t *testing.T) {
+	type Example struct {
+		Name   string
+		Input  []Token
+		Output *node.HTMLNode
+	}
+
+	examples := []Example{
+		{
+			Name: "nothing",
+			Input: []Token{
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(),
+		},
+		{
+			Name: "italics",
+			Input: []Token{
+				{Variant: TokenStar},
+				{Variant: TokenString, Value: "this should be in italics"},
+				{Variant: TokenStar},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("em", nil, node.TextNode("this should be in italics")),
+			),
+		},
+		{
+			Name: "bolded",
+			Input: []Token{
+				{Variant: TokenDoubleStar},
+				{Variant: TokenString, Value: "this should be bolded"},
+				{Variant: TokenDoubleStar},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("strong", nil, node.TextNode("this should be bolded")),
+			),
+		},
+		{
+			Name: "italics and bolded",
+			Input: []Token{
+				{Variant: TokenTripleStar},
+				{Variant: TokenString, Value: "this should be in italics and bolded"},
+				{Variant: TokenTripleStar},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("strong", nil,
+					node.NewHTMLNode("em", nil, node.TextNode("this should be in italics and bolded")),
+				),
+			),
+		},
+		{
+			Name: "bolded inside of italics",
+			Input: []Token{
+				{Variant: TokenStar},
+				{Variant: TokenString, Value: "this should be in italics "},
+				{Variant: TokenDoubleStar},
+				{Variant: TokenString, Value: "and this in bold"},
+				{Variant: TokenDoubleStar},
+				{Variant: TokenStar},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("em", nil, node.TextNode("this should be in italics "),
+					node.NewHTMLNode("strong", nil,
+						node.TextNode("and this in bold"),
+					),
+				),
+			),
+		},
+	}
+
+	for _, example := range examples {
+		output, err := parseInline(0, example.Input)
+		if err != nil {
+			t.Errorf("%s: %v", example.Name, err)
+			continue
+		}
+
+		if !reflect.DeepEqual(output, example.Output) {
+			formatted, _ := json.MarshalIndent(output, "", "  ")
+			t.Errorf("%s: got %s", example.Name, string(formatted))
+		}
+	}
+}
+
 func TestParser(t *testing.T) {
 	type Example struct {
 		Name   string

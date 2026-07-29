@@ -161,8 +161,10 @@ loop:
 			_, err = p.inlineParseToken(TokenStrikethrough, true, []string{"s"})
 		case TokenHighlight:
 			_, err = p.inlineParseToken(TokenHighlight, true, []string{"mark"})
+		case TokenBang:
+		case TokenLBracket:
 		default:
-			p.document.Children = append(p.document.Children, node.TextNode(current.String()))
+			p.appendToDocument(current)
 		}
 
 		if err != nil {
@@ -268,8 +270,14 @@ func (p *parser) appendChild(node node.Renderer) error {
 	return nil
 }
 
+// use this when parsing blocks
 func (p *parser) appendToParagraph(token Token) {
 	p.paragraph = append(p.paragraph, token)
+}
+
+// use this when parsing inline
+func (p *parser) appendToDocument(tokens ...Token) {
+	p.document.Children = append(p.document.Children, node.TextNode(stringifyTokens(tokens)))
 }
 
 // use instead of Next() to track line numbers

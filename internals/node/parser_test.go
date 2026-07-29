@@ -27,7 +27,7 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(NewHTMLNode("h1", nil, TextNode("Lorem Ipsum"))),
+			Output: NewHTMLFragment(NewHTMLNode("h1", nil, NewHTMLFragment(TextNode("Lorem Ipsum")))),
 		},
 
 		// code blocks

@@ -10,7 +10,7 @@ func Parse(tokens []Token) (Renderer, error) {
 loop:
 	for p.HasData() {
 		current := p.Current()
-		if !p.isNewline {
+		if !p.isNewline && current.Variant != TokenNewline {
 			p.appendToParagraph(current)
 			p.consume()
 			continue
@@ -20,6 +20,7 @@ loop:
 		case TokenEOF:
 			break loop
 		case TokenNewline:
+			// seeing a random newline should do nothing
 		case TokenHeading:
 			level := len(current.Value)
 			if level > 7 {
@@ -27,20 +28,13 @@ loop:
 			}
 			p.consume() // skip heading
 
-			prevLine := p.line
-			headerTokens, err := p.collectUntil(TokenNewline)
-			if err != nil {
-				return nil, err
-			}
-
-			textContent, err := parseInline(prevLine, trimStartingSpace(headerTokens))
+			textNode, err := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
 			if err != nil {
 				return nil, err
 			}
 
 			tagName := fmt.Sprintf("h%d", level)
-			p.appendChild(NewHTMLNode(tagName, nil, textContent.GetChildren()...))
-
+			p.appendChild(NewHTMLNode(tagName, nil, textNode))
 		case TokenCodeBlock:
 			var language string
 			if p.Peek().Variant == TokenString {
@@ -56,10 +50,65 @@ loop:
 			if err != nil {
 				return nil, err
 			}
+
 			code := stringifyTokens(trimNewlines(codeTokens))
 			p.appendChild(NewHTMLNode("pre", HTMLProps{"data-language": language},
 				NewHTMLNode("code", nil, TextNode(code)),
 			))
+		case TokenSeparator:
+			p.appendChild(NewHTMLNode("br", nil))
+		case TokenListItem:
+			type stackItem struct {
+				list  *HTMLNode
+				level int
+			}
+
+			parentList := NewHTMLNode("ul", nil)
+			stack := []stackItem{
+				{list: parentList, level: 0},
+			}
+
+			for len(stack) > 0 {
+				if _, err := p.expectCurrentToken(TokenListItem); err != nil {
+					return nil, fmt.Errorf("expected list item token %s", p.errorAt())
+				}
+				p.consume()
+
+				top := &stack[len(stack)-1]
+				stack = stack[:len(stack)-1]
+
+				listItemNode, err := p.collectUntilThenInlineParse(TokenNewline, preprocessTokensNoop)
+				if err != nil {
+					return nil, err
+				}
+				parentList.Children = append(parentList.Children, NewHTMLNode("li", nil, listItemNode.GetChildren()...))
+
+				switch p.Peek().Variant {
+				case TokenListItem:
+					stack = append(stack, *top)
+					p.consume() // skip current \n
+				case TokenIndent:
+					indents, err := p.collectUntil(TokenListItem)
+					if err != nil {
+						return nil, err
+					}
+					p.consume() // skip current \n
+
+					level := len(indents)
+					if level > top.level {
+						childList := NewHTMLNode("ul", nil)
+						top.list.Children = append(top.list.Children, NewHTMLNode("li", nil, childList))
+						stack = append(stack, stackItem{
+							list:  childList,
+							level: level,
+						})
+					} else {
+						stack = append(stack, *top)
+					}
+				}
+			}
+
+			p.appendChild(parentList)
 		default:
 			p.appendToParagraph(current)
 		}
@@ -88,11 +137,8 @@ loop:
 		switch current.Variant {
 		case TokenEOF:
 			break loop
-		case TokenNewline:
-		case TokenString:
-			p.document.Children = append(p.document.Children, TextNode(current.Value))
 		default:
-			return nil, fmt.Errorf("unexpected token %s", p.errorAt())
+			p.document.Children = append(p.document.Children, TextNode(current.String()))
 		}
 
 		p.consume()
@@ -106,7 +152,7 @@ type parser struct {
 
 	document      *HTMLNode
 	paragraph     []Token
-	paragraphLine int
+	paragraphLine int // line the starts off the paragraph
 	line          int
 	isNewline     bool
 }
@@ -119,6 +165,21 @@ func newParser(tokens []Token) *parser {
 		document:  NewHTMLFragment(),
 		isNewline: true,
 	}
+}
+
+func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preprocessTokens func([]Token) []Token) (Renderer, error) {
+	line := p.line
+	tokens, err := p.collectUntil(tokenVariant)
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := parseInline(line, preprocessTokens(tokens))
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
 }
 
 // manage tokens that get accumulated into the paragraph (not a block basically)
@@ -164,8 +225,8 @@ func (p *parser) consume() Token {
 	return p.Next()
 }
 
-func (p *parser) expectNextToken(tokenVariant TokenVariant) (Token, error) {
-	actualToken := p.consume()
+func (p *parser) expectCurrentToken(tokenVariant TokenVariant) (Token, error) {
+	actualToken := p.Current()
 	switch actualToken.Variant {
 	case tokenVariant:
 		return actualToken, nil
@@ -174,6 +235,12 @@ func (p *parser) expectNextToken(tokenVariant TokenVariant) (Token, error) {
 	default:
 		return Token{}, fmt.Errorf("unexpected token %v %s", actualToken, p.errorAt())
 	}
+
+}
+
+func (p *parser) expectNextToken(tokenVariant TokenVariant) (Token, error) {
+	p.consume()
+	return p.expectCurrentToken(tokenVariant)
 }
 
 // not the same as collectWhile in the lexer

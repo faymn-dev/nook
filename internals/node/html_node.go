@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+type Renderer interface {
+	ToHTML() string
+	GetChildren() []Renderer
+}
+
+const FragmentTag = "fragment"
+
 type HTMLProps map[string]string
 
 type HTMLNode struct {
@@ -12,8 +19,6 @@ type HTMLNode struct {
 	Props    HTMLProps
 	Children []Renderer
 }
-
-const FragmentTag = "fragment"
 
 func NewHTMLNode(tag string, props HTMLProps, children ...Renderer) *HTMLNode {
 	return &HTMLNode{
@@ -60,4 +65,14 @@ func (h *HTMLNode) ToHTML() string {
 
 func (h *HTMLNode) GetChildren() []Renderer {
 	return h.Children
+}
+
+type TextNode string
+
+func (t TextNode) ToHTML() string {
+	return string(t)
+}
+
+func (t TextNode) GetChildren() []Renderer {
+	return nil
 }

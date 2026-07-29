@@ -35,3 +35,7 @@ func trimNewlines(tokens []Token) []Token {
 	}
 	return tokens
 }
+
+func preprocessTokensNoop(tokens []Token) []Token {
+	return tokens
+}

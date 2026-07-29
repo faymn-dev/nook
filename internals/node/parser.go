@@ -4,6 +4,8 @@ import (
 	"fmt"
 )
 
+const indentSize = 2
+
 func Parse(tokens []Token) (Renderer, error) {
 	p := newParser(tokens)
 
@@ -71,7 +73,7 @@ loop:
 
 				level := 0
 				if p.Current().Variant == TokenIndent {
-					level = len(p.Current().Value)
+					level = len(p.Current().Value) / indentSize
 					p.consume() // skip indentation
 				}
 
@@ -94,9 +96,8 @@ loop:
 					var parentLiNode *HTMLNode
 					if len(top.list.Children) > 0 {
 						parentLiNode = top.list.Children[len(top.list.Children)-1].(*HTMLNode)
-					} else { // fallback if indentation but no content
-						parentLiNode = NewHTMLNode("li", nil)
-						top.list.Children = append(top.list.Children, parentLiNode)
+					} else {
+						return nil, fmt.Errorf("malformed list %s", p.errorAt())
 					}
 
 					childListNode := NewHTMLNode("ul", nil)

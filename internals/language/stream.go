@@ -1,4 +1,4 @@
-package node
+package language
 
 type Stream[T comparable] struct {
 	data []T

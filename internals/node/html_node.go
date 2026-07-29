@@ -66,13 +66,3 @@ func (h *HTMLNode) ToHTML() string {
 func (h *HTMLNode) GetChildren() []Renderer {
 	return h.Children
 }
-
-type TextNode string
-
-func (t TextNode) ToHTML() string {
-	return string(t)
-}
-
-func (t TextNode) GetChildren() []Renderer {
-	return nil
-}

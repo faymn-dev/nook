@@ -1,16 +1,18 @@
-package node
+package language
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/faymn-dev/initiator/internals/node"
 )
 
 func TestParser(t *testing.T) {
 	type Example struct {
 		Name   string
 		Input  []Token
-		Output *HTMLNode
+		Output *node.HTMLNode
 	}
 
 	examples := []Example{
@@ -19,7 +21,7 @@ func TestParser(t *testing.T) {
 			Input: []Token{
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(),
+			Output: node.NewHTMLFragment(),
 		},
 
 		{
@@ -30,7 +32,7 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(NewHTMLNode("h1", nil, NewHTMLFragment(TextNode("Lorem Ipsum")))),
+			Output: node.NewHTMLFragment(node.NewHTMLNode("h1", nil, node.NewHTMLFragment(node.TextNode("Lorem Ipsum")))),
 		},
 
 		// code blocks
@@ -45,7 +47,7 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(NewHTMLNode("pre", HTMLProps{"data-language": ""}, NewHTMLNode("code", nil, TextNode("let x = 10;")))),
+			Output: node.NewHTMLFragment(node.NewHTMLNode("pre", node.HTMLProps{"data-language": ""}, node.NewHTMLNode("code", nil, node.TextNode("let x = 10;")))),
 		},
 		{
 			Name: "code block with language",
@@ -59,7 +61,7 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(NewHTMLNode("pre", HTMLProps{"data-language": "js"}, NewHTMLNode("code", nil, TextNode("let x = 10;")))),
+			Output: node.NewHTMLFragment(node.NewHTMLNode("pre", node.HTMLProps{"data-language": "js"}, node.NewHTMLNode("code", nil, node.TextNode("let x = 10;")))),
 		},
 
 		{
@@ -76,11 +78,11 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil, TextNode("list item 1")),
-					NewHTMLNode("li", nil, TextNode("list item 2")),
-					NewHTMLNode("li", nil, TextNode("list item 3")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil, node.TextNode("list item 1")),
+					node.NewHTMLNode("li", nil, node.TextNode("list item 2")),
+					node.NewHTMLNode("li", nil, node.TextNode("list item 3")),
 				),
 			),
 		},
@@ -108,16 +110,16 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil, TextNode("list item 1")),
-					NewHTMLNode("li", nil, TextNode("list item 2"),
-						NewHTMLNode("ul", nil,
-							NewHTMLNode("li", nil, TextNode("list item 2a")),
-							NewHTMLNode("li", nil, TextNode("list item 2b")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil, node.TextNode("list item 1")),
+					node.NewHTMLNode("li", nil, node.TextNode("list item 2"),
+						node.NewHTMLNode("ul", nil,
+							node.NewHTMLNode("li", nil, node.TextNode("list item 2a")),
+							node.NewHTMLNode("li", nil, node.TextNode("list item 2b")),
 						),
 					),
-					NewHTMLNode("li", nil, TextNode("list item 3")),
+					node.NewHTMLNode("li", nil, node.TextNode("list item 3")),
 				),
 			),
 		},
@@ -129,9 +131,9 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil, TextNode("hello world")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil, node.TextNode("hello world")),
 				),
 			),
 		},
@@ -149,11 +151,11 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil, TextNode("item 1")),
-					NewHTMLNode("li", nil, TextNode("item 2")),
-					NewHTMLNode("li", nil, TextNode("item 3")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil, node.TextNode("item 1")),
+					node.NewHTMLNode("li", nil, node.TextNode("item 2")),
+					node.NewHTMLNode("li", nil, node.TextNode("item 3")),
 				),
 			),
 		},
@@ -176,13 +178,13 @@ func TestParser(t *testing.T) {
 
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil, TextNode("level 1"),
-						NewHTMLNode("ul", nil,
-							NewHTMLNode("li", nil, TextNode("level 2"),
-								NewHTMLNode("ul", nil,
-									NewHTMLNode("li", nil, TextNode("level 3")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil, node.TextNode("level 1"),
+						node.NewHTMLNode("ul", nil,
+							node.NewHTMLNode("li", nil, node.TextNode("level 2"),
+								node.NewHTMLNode("ul", nil,
+									node.NewHTMLNode("li", nil, node.TextNode("level 3")),
 								),
 							),
 						),
@@ -200,10 +202,10 @@ func TestParser(t *testing.T) {
 				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil),
-					NewHTMLNode("li", nil, TextNode("not empty")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil),
+					node.NewHTMLNode("li", nil, node.TextNode("not empty")),
 				),
 			),
 		},
@@ -226,12 +228,12 @@ func TestParser(t *testing.T) {
 
 				{Variant: TokenEOF},
 			},
-			Output: NewHTMLFragment(
-				NewHTMLNode("ul", nil,
-					NewHTMLNode("li", nil, TextNode("parent"),
-						NewHTMLNode("ul", nil,
-							NewHTMLNode("li", nil, TextNode("child 1")),
-							NewHTMLNode("li", nil, TextNode("child 2")),
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("ul", nil,
+					node.NewHTMLNode("li", nil, node.TextNode("parent"),
+						node.NewHTMLNode("ul", nil,
+							node.NewHTMLNode("li", nil, node.TextNode("child 1")),
+							node.NewHTMLNode("li", nil, node.TextNode("child 2")),
 						),
 					),
 				),

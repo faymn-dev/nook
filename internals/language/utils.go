@@ -1,6 +1,8 @@
-package node
+package language
 
-import "strings"
+import (
+	"strings"
+)
 
 // if the first token is a string, we'll strip the space of the front
 // useful if this is a heading, for example
@@ -26,11 +28,11 @@ func stringifyTokens(tokens []Token) string {
 }
 
 // remove the first starting newline and last ending newline from a list of tokens
-func trimNewlines(tokens []Token) []Token {
-	if len(tokens) > 1 && tokens[0].Variant == TokenNewline {
+func trimTokens(tokens []Token, tokenVariant TokenVariant) []Token {
+	if len(tokens) > 1 && tokens[0].Variant == tokenVariant {
 		tokens = tokens[1:]
 	}
-	if len(tokens) > 1 && tokens[len(tokens)-1].Variant == TokenNewline {
+	if len(tokens) > 1 && tokens[len(tokens)-1].Variant == tokenVariant {
 		tokens = tokens[:len(tokens)-1]
 	}
 	return tokens

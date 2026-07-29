@@ -1,4 +1,4 @@
-package node
+package language
 
 import (
 	"unicode"
@@ -24,6 +24,7 @@ const (
 	// inline tokens
 	TokenStar          // *
 	TokenDoubleStar    // **
+	TokenTripleStar    // ***
 	TokenCode          // `
 	TokenStrikethrough // ~~
 	TokenHighlight     // ==
@@ -46,6 +47,7 @@ var tokenVariantToString = map[TokenVariant]string{
 	TokenListItem:      "-",
 	TokenStar:          "*",
 	TokenDoubleStar:    "**",
+	TokenTripleStar:    "***",
 	TokenCode:          "`",
 	TokenStrikethrough: "~~",
 	TokenHighlight:     "==",
@@ -81,7 +83,6 @@ func Tokenize(markdown string) []Token {
 			data: []rune(markdown),
 		},
 	}
-	// return nil, fmt.Errorf("unexpected character %q at line %d, column %d", l.current(), l.line, l.column)
 
 	for l.HasData() {
 		current := l.Current()
@@ -97,7 +98,11 @@ func Tokenize(markdown string) []Token {
 				l.addToWord(current)
 			}
 		case '*':
-			if l.Peek() == '*' {
+			if l.Peek() == '*' && l.PeekOffset(2) == '*' {
+				l.commitToken(Token{Variant: TokenTripleStar})
+				l.Next() // skip current *
+				l.Next() // skip peek *
+			} else if l.Peek() == '*' {
 				l.commitToken(Token{Variant: TokenDoubleStar})
 				l.Next() // skip current *
 			} else {

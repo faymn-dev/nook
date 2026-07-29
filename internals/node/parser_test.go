@@ -121,6 +121,122 @@ func TestParser(t *testing.T) {
 				),
 			),
 		},
+		{
+			Name: "single item list",
+			Input: []Token{
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "hello world"},
+				{Variant: TokenNewline},
+				{Variant: TokenEOF},
+			},
+			Output: NewHTMLFragment(
+				NewHTMLNode("ul", nil,
+					NewHTMLNode("li", nil, TextNode("hello world")),
+				),
+			),
+		},
+		{
+			Name: "flat list",
+			Input: []Token{
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "item 1"},
+				{Variant: TokenNewline},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "item 2"},
+				{Variant: TokenNewline},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "item 3"},
+				{Variant: TokenNewline},
+				{Variant: TokenEOF},
+			},
+			Output: NewHTMLFragment(
+				NewHTMLNode("ul", nil,
+					NewHTMLNode("li", nil, TextNode("item 1")),
+					NewHTMLNode("li", nil, TextNode("item 2")),
+					NewHTMLNode("li", nil, TextNode("item 3")),
+				),
+			),
+		},
+		{
+			Name: "deeply nested list",
+			Input: []Token{
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "level 1"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenIndent, Value: "  "},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "level 2"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenIndent, Value: "    "},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "level 3"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenEOF},
+			},
+			Output: NewHTMLFragment(
+				NewHTMLNode("ul", nil,
+					NewHTMLNode("li", nil, TextNode("level 1"),
+						NewHTMLNode("ul", nil,
+							NewHTMLNode("li", nil, TextNode("level 2"),
+								NewHTMLNode("ul", nil,
+									NewHTMLNode("li", nil, TextNode("level 3")),
+								),
+							),
+						),
+					),
+				),
+			),
+		},
+		{
+			Name: "list with empty items",
+			Input: []Token{
+				{Variant: TokenListItem},
+				{Variant: TokenNewline},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "not empty"},
+				{Variant: TokenNewline},
+				{Variant: TokenEOF},
+			},
+			Output: NewHTMLFragment(
+				NewHTMLNode("ul", nil,
+					NewHTMLNode("li", nil),
+					NewHTMLNode("li", nil, TextNode("not empty")),
+				),
+			),
+		},
+		{
+			Name: "multiple sub-lists under one item",
+			Input: []Token{
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "parent"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenIndent, Value: "  "},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "child 1"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenIndent, Value: "  "},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: "child 2"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenEOF},
+			},
+			Output: NewHTMLFragment(
+				NewHTMLNode("ul", nil,
+					NewHTMLNode("li", nil, TextNode("parent"),
+						NewHTMLNode("ul", nil,
+							NewHTMLNode("li", nil, TextNode("child 1")),
+							NewHTMLNode("li", nil, TextNode("child 2")),
+						),
+					),
+				),
+			),
+		},
 	}
 
 	for _, example := range examples {

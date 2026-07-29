@@ -67,6 +67,7 @@ loop:
 			parentList := NewHTMLNode("ul", nil)
 			ctx := &listContext{list: parentList, level: 0}
 
+			// approach: given the parent (ctx), parse each incoming list item
 			for ctx != nil {
 				level := 0
 				if p.Current().Variant == TokenIndent {
@@ -76,7 +77,6 @@ loop:
 
 				if _, err := p.expectCurrentToken(TokenListItem); err != nil {
 					return nil, fmt.Errorf("expected list item token %s", p.errorAt())
-
 				}
 				p.consume() // skip list item
 
@@ -88,33 +88,35 @@ loop:
 
 				liNode := NewHTMLNode("li", nil, contentNode.GetChildren()...)
 
-				if level == ctx.level {
+				// decide where the list item (liNode) should go
+				if level == ctx.level { // same level, so just add it to the parent
 					ctx.list.Children = append(ctx.list.Children, liNode)
-				} else if level > ctx.level {
+				} else if level > ctx.level { // deeper level, so add it to last li of parent
 					// this is genuinely terrible to reason about
 					// it's reactive parsing
+					var lastLiNode *HTMLNode
+					if len(ctx.list.Children) > 0 {
+						lastLiNode = ctx.list.Children[len(ctx.list.Children)-1].(*HTMLNode)
+					} else {
+						lastLiNode = NewHTMLNode("li", nil)
+						ctx.list.Children = append(ctx.list.Children, lastLiNode)
+					}
+
 					childListNode := NewHTMLNode("ul", nil)
 					childListNode.Children = append(childListNode.Children, liNode)
-					lastLiNode := ctx.list.Children[len(ctx.list.Children)-1].(*HTMLNode)
 					lastLiNode.Children = append(lastLiNode.Children, childListNode)
 					ctx = &listContext{
 						parent: ctx,
 						list:   childListNode,
 						level:  level,
 					}
-				} else {
+				} else { // level is higher, so we need to find the closest parent at the same level
 					curr := ctx
 					for curr.parent != nil && curr.level >= level {
 						curr = curr.parent
 					}
-
-					if curr == nil { // climbed out of the root list
-						parentList.Children = append(parentList.Children, liNode)
-						ctx = &listContext{list: parentList}
-					} else {
-						curr.list.Children = append(curr.list.Children, liNode)
-						ctx = curr
-					}
+					curr.list.Children = append(curr.list.Children, liNode)
+					ctx = curr
 				}
 
 				if !(p.Current().Variant == TokenIndent || p.Current().Variant == TokenListItem) {

@@ -138,8 +138,7 @@ func Tokenize(markdown string) []Token {
 			if l.Peek() == '~' {
 				l.commitToken(Token{Variant: TokenStrikethrough})
 				l.Next() // skip current ~
-			} else {
-				// not a strike through, so add it to the word normally
+			} else { // not a strike through, so add it to the word normally
 				l.addToWord(current)
 			}
 		case '=':
@@ -163,8 +162,7 @@ func Tokenize(markdown string) []Token {
 			if l.HasNext() {
 				l.Next()
 				l.commitToken(Token{Variant: TokenEscape, Value: string(l.Current())})
-			} else {
-				// you escaped... nothing, because nothing is left
+			} else { // you escaped... nothing, because nothing is left
 				l.addToWord(current)
 			}
 		default:
@@ -173,8 +171,7 @@ func Tokenize(markdown string) []Token {
 				if l.Current() == '.' {
 					l.commitToken(Token{Variant: TokenNumberedListItem, Value: string(digits) + "."})
 					l.Next() // skip current .
-				} else {
-					// it's not a list item, so just shove it into the word
+				} else { // it's not a list item, so just shove it into the word
 					for _, digit := range digits {
 						l.addToWord(digit)
 					}

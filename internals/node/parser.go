@@ -65,7 +65,7 @@ loop:
 			}
 
 			parentList := NewHTMLNode("ul", nil)
-			ctx := &listContext{list: parentList}
+			ctx := &listContext{list: parentList, level: 0}
 
 			for ctx != nil {
 				// calculate indentation
@@ -87,7 +87,9 @@ loop:
 
 				liNode := NewHTMLNode("li", nil, contentNode.GetChildren()...)
 
-				if level > ctx.level {
+				if level == ctx.level {
+					ctx.list.Children = append(ctx.list.Children, liNode)
+				} else if level > ctx.level {
 					childListNode := NewHTMLNode("ul", nil)
 					childListNode.Children = append(childListNode.Children, liNode)
 					lastLiNode := ctx.list.Children[len(ctx.list.Children)-1].(*HTMLNode)
@@ -97,15 +99,13 @@ loop:
 						list:   childListNode,
 						level:  level,
 					}
-				} else if level == ctx.level {
-					ctx.list.Children = append(ctx.list.Children, liNode)
 				} else {
 					curr := ctx
 					for curr.parent != nil && curr.level >= level {
 						curr = curr.parent
 					}
 
-					if curr == nil { // We climbed out of the root list
+					if curr == nil { // climbed out of the root list
 						parentList.Children = append(parentList.Children, liNode)
 						ctx = &listContext{list: parentList}
 					} else {

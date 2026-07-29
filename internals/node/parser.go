@@ -59,16 +59,16 @@ loop:
 			p.appendChild(NewHTMLNode("br", nil))
 		case TokenListItem:
 			type listContext struct {
-				parent *listContext
-				list   *HTMLNode // list we are currently inside
-				level  int
+				level int
+				list  *HTMLNode
 			}
 
 			parentList := NewHTMLNode("ul", nil)
-			ctx := &listContext{list: parentList, level: 0}
+			stack := []listContext{{level: 0, list: parentList}}
 
 			// approach: given the parent (ctx), parse each incoming list item
-			for ctx != nil {
+			for {
+
 				level := 0
 				if p.Current().Variant == TokenIndent {
 					level = len(p.Current().Value)
@@ -89,38 +89,34 @@ loop:
 				liNode := NewHTMLNode("li", nil, contentNode.GetChildren()...)
 
 				// decide where the list item (liNode) should go
-				if level == ctx.level { // same level, so just add it to the parent
-					ctx.list.Children = append(ctx.list.Children, liNode)
-				} else if level > ctx.level { // deeper level, so add it to last li of parent
-					// this is genuinely terrible to reason about
-					// it's reactive parsing
-					var lastLiNode *HTMLNode
-					if len(ctx.list.Children) > 0 {
-						lastLiNode = ctx.list.Children[len(ctx.list.Children)-1].(*HTMLNode)
-					} else {
-						lastLiNode = NewHTMLNode("li", nil)
-						ctx.list.Children = append(ctx.list.Children, lastLiNode)
+				top := stack[len(stack)-1]
+				if level > top.level { // deeper level, so add it to last li of parent
+					var parentLiNode *HTMLNode
+					if len(top.list.Children) > 0 {
+						parentLiNode = top.list.Children[len(top.list.Children)-1].(*HTMLNode)
+					} else { // fallback if indentation but no content
+						parentLiNode = NewHTMLNode("li", nil)
+						top.list.Children = append(top.list.Children, parentLiNode)
 					}
 
 					childListNode := NewHTMLNode("ul", nil)
-					childListNode.Children = append(childListNode.Children, liNode)
-					lastLiNode.Children = append(lastLiNode.Children, childListNode)
-					ctx = &listContext{
-						parent: ctx,
-						list:   childListNode,
-						level:  level,
+					// childListNode.Children = append(childListNode.Children, liNode)
+					parentLiNode.Children = append(parentLiNode.Children, childListNode)
+					stack = append(stack, listContext{
+						list:  childListNode,
+						level: level,
+					})
+				} else if level < top.level { // pop until we find context at/above level
+					for len(stack) > 1 && stack[len(stack)-1].level >= level {
+						stack = stack[:len(stack)-1]
 					}
-				} else { // level is higher, so we need to find the closest parent at the same level
-					curr := ctx
-					for curr.parent != nil && curr.level >= level {
-						curr = curr.parent
-					}
-					curr.list.Children = append(curr.list.Children, liNode)
-					ctx = curr
 				}
 
+				currentList := stack[len(stack)-1].list
+				currentList.Children = append(currentList.Children, liNode)
+
 				if !(p.Current().Variant == TokenIndent || p.Current().Variant == TokenListItem) {
-					ctx = nil
+					break
 				}
 			}
 

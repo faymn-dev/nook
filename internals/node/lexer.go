@@ -103,12 +103,12 @@ func Tokenize(markdown string) []Token {
 				l.commitToken(Token{Variant: TokenStar})
 			}
 		case '#':
-			l.commitToken(Token{Variant: TokenHeading, Value: string(l.CollectWhile('#'))})
+			l.commitToken(Token{Variant: TokenHeading, Value: string(l.collectWhile('#'))})
 			// anytime we use collectWhile, we end on a different token
 			// we don't want to autoskip it, so next iteration
 			continue
 		case '-':
-			separator := l.CollectWhile('-')
+			separator := l.collectWhile('-')
 			if len(separator) == 1 {
 				l.commitToken(Token{Variant: TokenListItem})
 			} else if len(separator) == 2 {
@@ -120,7 +120,7 @@ func Tokenize(markdown string) []Token {
 			}
 			continue
 		case '`':
-			if l.MatchAhead('`', '`') {
+			if l.matchAhead('`', '`') {
 				// TODO should we care about 4 backtiks in a row?
 				// we can potentially reuse the collectWhile method to ensure it's a length of three?
 				l.commitToken(Token{Variant: TokenCodeBlock})
@@ -200,6 +200,8 @@ func (l *lexer) addToWord(char rune) {
 	l.word = append(l.word, char)
 }
 
+// when using this method, you probably don't want to call .Next()
+// because the last token you'll be on is the token AFTER target
 func (l *lexer) collectWhileDigit() []rune {
 	result := []rune{}
 	for l.HasData() && unicode.IsDigit(l.Current()) {
@@ -207,4 +209,24 @@ func (l *lexer) collectWhileDigit() []rune {
 		l.Next()
 	}
 	return result
+}
+
+// when using this method, you probably don't want to call .Next()
+// because the last token you'll be on is the token AFTER target
+func (l *lexer) collectWhile(target rune) []rune {
+	result := []rune{}
+	for l.HasData() && l.Current() == target {
+		result = append(result, target)
+		l.Next()
+	}
+	return result
+}
+
+func (l *lexer) matchAhead(targets ...rune) bool {
+	for i, target := range targets {
+		if target != l.PeekOffset(i+1) {
+			return false
+		}
+	}
+	return true
 }

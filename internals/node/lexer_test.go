@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestLexer(t *testing.T) {
+func TestTokenizer(t *testing.T) {
 	type Example struct {
 		Name   string
 		Input  string

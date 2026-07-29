@@ -10,27 +10,54 @@ func Parse(tokens []Token) (Renderer, error) {
 		Stream: Stream[Token]{
 			data: tokens,
 		},
-		document: NewHTMLNode("div", nil),
+		document: NewHTMLFragment(),
 	}
 
+loop:
 	for p.HasData() {
 		current := p.Current()
 
 		switch current.Variant {
 		case TokenEOF:
+			break loop
 		case TokenNewline:
 		case TokenHeading:
-			textContent, err := p.expectTokenVariant(TokenString)
-			if err != nil {
-				return nil, err
+			if !p.isNewline() {
+				p.addToParagraph(current)
+			} else {
+				textContent, err := p.expectNextToken(TokenString)
+				if err != nil {
+					return nil, err
+				}
+				level := len(current.Value)
+				if level > 7 {
+					return nil, fmt.Errorf("headings cannot be greater than level 7 %s", p.errorAt())
+				}
+				p.appendChild(NewHTMLNode(fmt.Sprintf("h%d", level), nil, TextNode(strings.TrimSpace(textContent.Value))))
 			}
+		case TokenCodeBlock:
+			if !p.isNewline() {
+				p.addToParagraph(current)
+			} else {
+				var language string
+				if p.Peek().Variant == TokenString {
+					language = p.Consume().Value
+				}
 
-			level := len(current.Value)
-			if level > 7 {
-				return nil, fmt.Errorf("headings cannot be greater than level 7 %s", p.location())
+				_, err := p.expectNextToken(TokenNewline)
+				if err != nil {
+					return nil, err
+				}
+
+				code, err := p.collectUntil(TokenCodeBlock)
+				if err != nil {
+					return nil, err
+				}
+
+				p.appendChild(NewHTMLNode("pre", HTMLProps{"data-language": language},
+					NewHTMLNode("code", nil, TextNode(strings.TrimSpace(stringifyTokens(code)))),
+				))
 			}
-
-			p.appendChild(NewHTMLNode(fmt.Sprintf("h%d", level), nil, TextNode(strings.TrimSpace(textContent.Value))))
 		default:
 			p.addToParagraph(current)
 		}
@@ -38,7 +65,16 @@ func Parse(tokens []Token) (Renderer, error) {
 		p.Consume()
 	}
 
+	p.flush()
 	return p.document, nil
+}
+
+func stringifyTokens(tokens []Token) string {
+	var sb strings.Builder
+	for _, token := range tokens {
+		sb.WriteString(token.String())
+	}
+	return sb.String()
 }
 
 type parser struct {
@@ -51,14 +87,9 @@ type parser struct {
 	column int
 }
 
-func (p *parser) appendChild(node Renderer) {
+func (p *parser) flush() {
 	if len(p.paragraph) > 0 {
-		var sb strings.Builder
-		for _, token := range p.paragraph {
-			sb.WriteString(token.String())
-		}
-
-		textContent := sb.String()
+		textContent := stringifyTokens(p.paragraph)
 		p.document.Children = append(p.document.Children, NewHTMLNode("p", nil, TextNode(textContent)))
 		if strings.HasSuffix(textContent, "  ") {
 			p.appendChild(NewHTMLNode("br", nil))
@@ -66,15 +97,15 @@ func (p *parser) appendChild(node Renderer) {
 
 		p.paragraph = []Token{}
 	}
+}
 
+func (p *parser) appendChild(node Renderer) {
+	p.flush()
 	p.document.Children = append(p.document.Children, node)
 }
 
 func (p *parser) addToParagraph(token Token) {
 	p.paragraph = append(p.paragraph, token)
-}
-
-func (p *parser) checkNewline(token Token) {
 }
 
 func (p *parser) Consume() Token {
@@ -85,24 +116,42 @@ func (p *parser) Consume() Token {
 	} else {
 		p.column++
 	}
-
-	p.Next()
-	return p.Current()
+	return p.Next()
 }
 
 func (p *parser) isNewline() bool {
 	return p.column == 0
 }
 
-func (p *parser) expectTokenVariant(variant TokenVariant) (Token, error) {
-	actualToken := p.Current()
-	if actualToken.Variant == variant {
-		p.Next()
+func (p *parser) expectNextToken(tokenVariant TokenVariant) (Token, error) {
+	actualToken := p.Consume()
+	switch actualToken.Variant {
+	case tokenVariant:
 		return actualToken, nil
+	case TokenEOF:
+		return Token{}, fmt.Errorf("unexpected end of input %s", p.errorAt())
+	default:
+		return Token{}, fmt.Errorf("unexpected token %v %s", actualToken, p.errorAt())
 	}
-	return Token{}, fmt.Errorf("unexpected token %v %s", actualToken, p.location())
 }
 
-func (p *parser) location() string {
+// not the same as collectWhile in the lexer
+// this ends at the target token, rather than after (so skipping it at the end is required over continue)
+func (p *parser) collectUntil(tokenVariant TokenVariant) ([]Token, error) {
+	result := []Token{}
+	current := p.Current()
+	for p.HasData() && current.Variant != tokenVariant {
+		if current.Variant == TokenEOF {
+			return nil, fmt.Errorf("unexpected end of input %s", p.errorAt())
+		}
+
+		result = append(result, current)
+		current = p.Consume()
+	}
+	// ends at the tokenVariant
+	return result, nil
+}
+
+func (p *parser) errorAt() string {
 	return fmt.Sprintf("at line %d, column %d", p.line, p.column)
 }

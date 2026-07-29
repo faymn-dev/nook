@@ -13,10 +13,19 @@ type HTMLNode struct {
 	Children []Renderer
 }
 
+const FragmentTag = "fragment"
+
 func NewHTMLNode(tag string, props HTMLProps, children ...Renderer) *HTMLNode {
 	return &HTMLNode{
 		Tag:      tag,
 		Props:    props,
+		Children: children,
+	}
+}
+
+func NewHTMLFragment(children ...Renderer) *HTMLNode {
+	return &HTMLNode{
+		Tag:      FragmentTag,
 		Children: children,
 	}
 }
@@ -28,19 +37,23 @@ func (h *HTMLNode) ToHTML() string {
 
 	var sb strings.Builder
 
-	fmt.Fprintf(&sb, "<%s", h.Tag)
-	if h.Props != nil {
-		for key, value := range h.Props {
-			fmt.Fprintf(&sb, " %s=\"%s\"", key, value)
+	if h.Tag != FragmentTag {
+		fmt.Fprintf(&sb, "<%s", h.Tag)
+		if h.Props != nil {
+			for key, value := range h.Props {
+				fmt.Fprintf(&sb, " %s=\"%s\"", key, value)
+			}
 		}
+		sb.WriteString(">")
 	}
-	sb.WriteString(">")
 
 	for _, child := range h.Children {
 		sb.WriteString(child.ToHTML())
 	}
 
-	fmt.Fprintf(&sb, "</%s>", h.Tag)
+	if h.Tag != FragmentTag {
+		fmt.Fprintf(&sb, "</%s>", h.Tag)
+	}
 
 	return sb.String()
 }

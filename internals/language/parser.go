@@ -49,11 +49,7 @@ loop:
 				return nil, err
 			}
 
-			codeTokens, err := p.collectUntil(TokenCodeBlock)
-			if err != nil {
-				return nil, err
-			}
-
+			codeTokens := p.collectUntil(TokenCodeBlock)
 			code := stringifyTokens(trimTokens(codeTokens, TokenNewline))
 			p.appendChild(node.NewHTMLNode("pre", node.HTMLProps{"data-language": language},
 				node.NewHTMLNode("code", nil, node.TextNode(code)),
@@ -149,42 +145,29 @@ loop:
 	for p.HasData() {
 		current := p.Current()
 
+		var err error
 		switch current.Variant {
 		case TokenEOF:
 			break loop
 		case TokenStar:
-			p.consume() // skip current star
-			result, err := p.collectUntilThenInlineParse(TokenStar, preprocessTokensNoop)
-			if err != nil {
-				return nil, fmt.Errorf("failed to inline parse star %s", p.errorAt())
-			}
-			p.consume() // skip star
-			p.document.Children = append(p.document.Children, node.NewHTMLNode("em", nil, result.GetChildren()...))
+			_, err = p.inlineParseToken(TokenStar, true, []string{"em"})
 		case TokenDoubleStar:
-			p.consume() // skip current star
-			result, err := p.collectUntilThenInlineParse(TokenDoubleStar, preprocessTokensNoop)
-			if err != nil {
-				return nil, fmt.Errorf("failed to inline parse double star %s", p.errorAt())
-			}
-			p.consume() // skip star
-			p.document.Children = append(p.document.Children, node.NewHTMLNode("strong", nil, result.GetChildren()...))
+			_, err = p.inlineParseToken(TokenDoubleStar, true, []string{"strong"})
 		case TokenTripleStar:
-			p.consume() // skip current star
-			result, err := p.collectUntilThenInlineParse(TokenTripleStar, preprocessTokensNoop)
-			if err != nil {
-				return nil, fmt.Errorf("failed to inline parse triple star %s", p.errorAt())
-			}
-			p.consume() // skip star
-			p.document.Children = append(p.document.Children, node.NewHTMLNode("strong", nil,
-				node.NewHTMLNode("em", nil, result.GetChildren()...),
-			))
+			_, err = p.inlineParseToken(TokenTripleStar, true, []string{"strong", "em"})
 		case TokenCode:
-		case TokenLBracket:
-		case TokenBang:
+			_, err = p.inlineParseToken(TokenCode, false, []string{"code"})
+		case TokenStrikethrough:
+			_, err = p.inlineParseToken(TokenStrikethrough, true, []string{"s"})
+		case TokenHighlight:
+			_, err = p.inlineParseToken(TokenHighlight, true, []string{"mark"})
 		default:
 			p.document.Children = append(p.document.Children, node.TextNode(current.String()))
 		}
 
+		if err != nil {
+			return nil, err
+		}
 		p.consume()
 	}
 
@@ -211,18 +194,50 @@ func newParser(tokens []Token) *parser {
 	}
 }
 
-func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preprocessTokens func([]Token) []Token) (node.Renderer, error) {
+// actually parse stuff
+func (p *parser) inlineParseToken(variant TokenVariant, inlineParse bool, parent []string) (node.Renderer, error) {
+	p.consume() // skip current
+
 	line := p.line
-	tokens, err := p.collectUntil(tokenVariant)
+	tokens := p.collectUntil(variant)
+	p.consume() // skip variant
+
+	var result node.Renderer
+	var err error
+	if inlineParse {
+		result, err = parseInline(line, tokens)
+	} else {
+		result = node.NewHTMLFragment(node.TextNode(stringifyTokens(tokens)))
+	}
+
 	if err != nil {
+		// TODO more descriptive errors
 		return nil, err
 	}
 
+	children := result
+	for len(parent) > 0 {
+		top := parent[len(parent)-1]
+		parent = parent[:len(parent)-1]
+		if children.GetTagName() == node.FragmentTagName {
+			children = node.NewHTMLNode(top, nil, children.GetChildren()...)
+		} else {
+			children = node.NewHTMLNode(top, nil, children)
+		}
+	}
+
+	p.document.Children = append(p.document.Children, children)
+
+	return children, nil
+}
+
+func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preprocessTokens func([]Token) []Token) (node.Renderer, error) {
+	line := p.line
+	tokens := p.collectUntil(tokenVariant)
 	node, err := parseInline(line, preprocessTokens(tokens))
 	if err != nil {
 		return nil, err
 	}
-
 	return node, nil
 }
 
@@ -288,7 +303,7 @@ func (p *parser) expectNextToken(tokenVariant TokenVariant) (Token, error) {
 
 // not the same as collectWhile in the lexer
 // this ends at the target token, rather than after (so skipping it at the end is required over continue)
-func (p *parser) collectUntil(tokenVariant TokenVariant) ([]Token, error) {
+func (p *parser) collectUntil(tokenVariant TokenVariant) []Token {
 	result := []Token{}
 	current := p.Current()
 	for p.HasData() && current.Variant != tokenVariant && current.Variant != TokenEOF {
@@ -296,7 +311,7 @@ func (p *parser) collectUntil(tokenVariant TokenVariant) ([]Token, error) {
 		current = p.consume()
 	}
 	// ends at the tokenVariant
-	return result, nil
+	return result
 }
 
 func (p *parser) errorAt() string {

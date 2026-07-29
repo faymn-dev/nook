@@ -15,10 +15,13 @@ func TestParser(t *testing.T) {
 
 	examples := []Example{
 		{
-			Name:   "nothing",
-			Input:  []Token{},
+			Name: "nothing",
+			Input: []Token{
+				{Variant: TokenEOF},
+			},
 			Output: NewHTMLFragment(),
 		},
+
 		{
 			Name: "headings",
 			Input: []Token{
@@ -57,6 +60,29 @@ func TestParser(t *testing.T) {
 				{Variant: TokenEOF},
 			},
 			Output: NewHTMLFragment(NewHTMLNode("pre", HTMLProps{"data-language": "js"}, NewHTMLNode("code", nil, TextNode("let x = 10;")))),
+		},
+
+		{
+			Name: "basic list",
+			Input: []Token{
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: " list item 1"},
+				{Variant: TokenNewline},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: " list item 2"},
+				{Variant: TokenNewline},
+				{Variant: TokenListItem},
+				{Variant: TokenString, Value: " list item 3"},
+				{Variant: TokenNewline},
+				{Variant: TokenEOF},
+			},
+			Output: NewHTMLFragment(
+				NewHTMLNode("ul", nil,
+					NewHTMLNode("li", nil, TextNode(" list item 1")),
+					NewHTMLNode("li", nil, TextNode(" list item 2")),
+					NewHTMLNode("li", nil, TextNode(" list item 3")),
+				),
+			),
 		},
 	}
 

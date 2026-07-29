@@ -58,57 +58,69 @@ loop:
 		case TokenSeparator:
 			p.appendChild(NewHTMLNode("br", nil))
 		case TokenListItem:
-			type stackItem struct {
-				list  *HTMLNode
-				level int
+			type listContext struct {
+				parent *listContext
+				list   *HTMLNode // list we are currently inside
+				level  int
 			}
 
 			parentList := NewHTMLNode("ul", nil)
-			stack := []stackItem{
-				{list: parentList, level: 0},
-			}
+			ctx := &listContext{list: parentList}
 
-			for len(stack) > 0 {
-				if _, err := p.expectCurrentToken(TokenListItem); err != nil {
-					return nil, fmt.Errorf("expected list item token %s", p.errorAt())
+			for ctx != nil {
+				// calculate indentation
+				indents, err := p.collectUntil(TokenListItem)
+				level := 0
+				for _, token := range indents {
+					if token.Variant != TokenIndent {
+						return nil, fmt.Errorf("expected indent token %s", p.errorAt())
+					}
+					level++
 				}
-				p.consume()
+				p.consume() // skip list item
 
-				top := &stack[len(stack)-1]
-				stack = stack[:len(stack)-1]
-
-				listItemNode, err := p.collectUntilThenInlineParse(TokenNewline, preprocessTokensNoop)
+				contentNode, err := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
 				if err != nil {
 					return nil, err
 				}
-				parentList.Children = append(parentList.Children, NewHTMLNode("li", nil, listItemNode.GetChildren()...))
+				p.consume() // skip new line
 
-				switch p.Peek().Variant {
-				case TokenListItem:
-					stack = append(stack, *top)
-					p.consume() // skip current \n
-				case TokenIndent:
-					indents, err := p.collectUntil(TokenListItem)
-					if err != nil {
-						return nil, err
+				liNode := NewHTMLNode("li", nil, contentNode.GetChildren()...)
+
+				if level > ctx.level {
+					childListNode := NewHTMLNode("ul", nil)
+					childListNode.Children = append(childListNode.Children, liNode)
+					lastLiNode := ctx.list.Children[len(ctx.list.Children)-1].(*HTMLNode)
+					lastLiNode.Children = append(lastLiNode.Children, childListNode)
+					ctx = &listContext{
+						parent: ctx,
+						list:   childListNode,
+						level:  level,
 					}
-					p.consume() // skip current \n
+				} else if level == ctx.level {
+					ctx.list.Children = append(ctx.list.Children, liNode)
+				} else {
+					curr := ctx
+					for curr.parent != nil && curr.level >= level {
+						curr = curr.parent
+					}
 
-					level := len(indents)
-					if level > top.level {
-						childList := NewHTMLNode("ul", nil)
-						top.list.Children = append(top.list.Children, NewHTMLNode("li", nil, childList))
-						stack = append(stack, stackItem{
-							list:  childList,
-							level: level,
-						})
+					if curr == nil { // We climbed out of the root list
+						parentList.Children = append(parentList.Children, liNode)
+						ctx = &listContext{list: parentList}
 					} else {
-						stack = append(stack, *top)
+						curr.list.Children = append(curr.list.Children, liNode)
+						ctx = curr
 					}
+				}
+
+				if !(p.Current().Variant == TokenIndent || p.Current().Variant == TokenListItem) {
+					ctx = nil
 				}
 			}
 
 			p.appendChild(parentList)
+			continue
 		default:
 			p.appendToParagraph(current)
 		}
@@ -191,7 +203,7 @@ func (p *parser) flush() error {
 			return err
 		}
 
-		p.document.Children = append(p.document.Children, children.GetChildren()...)
+		p.document.Children = append(p.document.Children, NewHTMLNode("p", nil, children.GetChildren()...))
 		if p.paragraph[len(p.paragraph)-1].Variant == TokenIndent {
 			p.document.Children = append(p.document.Children, NewHTMLNode("br", nil))
 		}

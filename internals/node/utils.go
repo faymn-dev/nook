@@ -2,35 +2,36 @@ package node
 
 import "strings"
 
-func countPrefix(text string, prefix rune) int {
-	count := 0
-	for char := range text {
-		if char == '#' {
-			count += 1
-		} else {
-			return count
-		}
+// if the first token is a string, we'll strip the space of the front
+// useful if this is a heading, for example
+func trimStartingSpace(tokens []Token) []Token {
+	if len(tokens) == 0 {
+		return tokens
 	}
-	return count
+
+	if tokens[0].Variant == TokenString {
+		tokens[0].Value = strings.TrimLeft(tokens[0].Value, " ")
+	}
+
+	return tokens
 }
 
-func hasPrefix(block string, prefixes []string) bool {
-	if len(prefixes) == 0 {
-		return true
+// convert a list of tokens into a string
+func stringifyTokens(tokens []Token) string {
+	var sb strings.Builder
+	for _, token := range tokens {
+		sb.WriteString(token.String())
 	}
-
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(block, prefix) {
-			return true
-		}
-	}
-	return false
+	return sb.String()
 }
 
-func trimPrefix(block string, prefixes []string) string {
-	block = strings.TrimSpace(block)
-	for _, prefix := range prefixes {
-		block = strings.TrimPrefix(block, prefix)
+// remove the first starting newline and last ending newline from a list of tokens
+func trimNewlines(tokens []Token) []Token {
+	if len(tokens) > 1 && tokens[0].Variant == TokenNewline {
+		tokens = tokens[1:]
 	}
-	return block
+	if len(tokens) > 1 && tokens[len(tokens)-1].Variant == TokenNewline {
+		tokens = tokens[:len(tokens)-1]
+	}
+	return tokens
 }

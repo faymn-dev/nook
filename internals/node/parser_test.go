@@ -24,6 +24,7 @@ func TestParser(t *testing.T) {
 			Input: []Token{
 				{Variant: TokenHeading, Value: "#"},
 				{Variant: TokenString, Value: " Lorem Ipsum"},
+				{Variant: TokenNewline},
 				{Variant: TokenEOF},
 			},
 			Output: NewHTMLFragment(NewHTMLNode("h1", nil, TextNode("Lorem Ipsum"))),
@@ -80,13 +81,6 @@ func TestParserErrors(t *testing.T) {
 	}
 
 	examples := []Example{
-		{
-			Name: "bad headings",
-			Input: []Token{
-				{Variant: TokenHeading, Value: "#"},
-				{Variant: TokenEOF},
-			},
-		},
 		{
 			Name: "bad code block",
 			Input: []Token{

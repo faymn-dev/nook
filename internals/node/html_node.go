@@ -57,3 +57,7 @@ func (h *HTMLNode) ToHTML() string {
 
 	return sb.String()
 }
+
+func (h *HTMLNode) GetChildren() []Renderer {
+	return h.Children
+}

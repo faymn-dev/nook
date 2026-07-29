@@ -19,6 +19,7 @@ const (
 	TokenSeparator        // ---
 	TokenListItem         // -
 	TokenNumberedListItem // 1. or any number followed by a period
+	TokenBlockquote       // >
 
 	// inline tokens
 	TokenStar          // *
@@ -54,6 +55,7 @@ var tokenVariantToString = map[TokenVariant]string{
 	TokenRParen:        ")",
 	TokenLBracket:      "[",
 	TokenRBracket:      "]",
+	TokenBlockquote:    ">",
 }
 
 func (t Token) String() string {
@@ -102,10 +104,13 @@ func Tokenize(markdown string) []Token {
 			} else {
 				l.commitToken(Token{Variant: TokenStar})
 			}
-		case '#':
-			l.commitToken(Token{Variant: TokenHeading, Value: string(l.collectWhile('#'))})
+		case '>':
+			l.commitToken(Token{Variant: TokenBlockquote, Value: string(l.collectWhile('>'))})
 			// anytime we use collectWhile, we end on a different token
 			// we don't want to autoskip it, so next iteration
+			continue
+		case '#':
+			l.commitToken(Token{Variant: TokenHeading, Value: string(l.collectWhile('#'))})
 			continue
 		case '-':
 			separator := l.collectWhile('-')

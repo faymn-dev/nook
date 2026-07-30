@@ -42,7 +42,7 @@ type Token struct {
 }
 
 var tokenVariantToString = map[TokenVariant]string{
-	TokenNewline:       " ",
+	TokenNewline:       "\n",
 	TokenCodeBlock:     "```",
 	TokenListItem:      "-",
 	TokenStar:          "*",

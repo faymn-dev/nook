@@ -15,20 +15,19 @@ loop:
 	for p.HasData() {
 		current := p.Current()
 
-		if p.Current().Variant == TokenNewline && p.Peek().Variant == TokenNewline {
+		if current.Variant == TokenNewline && p.Peek().Variant == TokenNewline {
 			p.flush()
 			p.isNewline = true
 			p.consume() // skip newline
 			p.consume() // skip newline
 			continue
-		}
-
-		if !p.isNewline {
+		} else if !p.isNewline {
 			p.appendToParagraph(current)
 			p.consume()
 			continue
 		}
 
+		// this are "blocks" that have to be on newlines
 		switch current.Variant {
 		case TokenEOF:
 			break loop

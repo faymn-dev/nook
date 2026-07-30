@@ -14,10 +14,12 @@ func Parse(tokens []Token) (node.Renderer, error) {
 loop:
 	for p.HasData() {
 		current := p.Current()
-		if current.Variant == TokenNewline {
+
+		if p.Current().Variant == TokenNewline && p.Peek().Variant == TokenNewline {
 			p.flush()
 			p.isNewline = true
-			p.consume()
+			p.consume() // skip newline
+			p.consume() // skip newline
 			continue
 		}
 
@@ -30,11 +32,10 @@ loop:
 		switch current.Variant {
 		case TokenEOF:
 			break loop
-		case TokenNewline: // seeing a random newline should do nothing
 		case TokenHeading:
 			level := len(current.Value)
 			if level > 7 {
-				return nil, fmt.Errorf("headings cannot be greater than level 7 %s", p.errorAt())
+				return nil, fmt.Errorf("headings cannot be greater than level 7")
 			}
 			p.consume() // skip heading
 
@@ -136,11 +137,9 @@ loop:
 type parser struct {
 	Stream[Token]
 
-	document      *node.HTMLNode
-	paragraph     []Token
-	paragraphLine int // line the starts off the paragraph
-	line          int
-	isNewline     bool
+	document  *node.HTMLNode
+	paragraph []Token
+	isNewline bool
 }
 
 func newParser(tokens []Token) *parser {
@@ -239,6 +238,7 @@ func (p *parser) tryParseBrackets() *parsedBrackets {
 	return result
 }
 
+// TODO make this a try method
 func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (node.Renderer, error) {
 	type listContext struct {
 		level int
@@ -257,14 +257,12 @@ func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (no
 		}
 
 		if _, err := p.expectCurrentToken(listItemVariant); err != nil {
-			return nil, fmt.Errorf("expected list item token %s", p.errorAt())
+			return nil, fmt.Errorf("expected list item token")
 		}
 		p.consume() // skip list item
 
 		contentNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
-		if contentNode == nil {
-			// TODO something something gracefully
-		}
+
 		p.consume() // skip new line
 
 		liNode := node.NewHTMLNode("li", nil, contentNode.GetChildren()...)
@@ -276,7 +274,7 @@ func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (no
 			if len(top.list.Children) > 0 {
 				parentLiNode = top.list.Children[len(top.list.Children)-1].(*node.HTMLNode)
 			} else {
-				return nil, fmt.Errorf("malformed list %s", p.errorAt())
+				return nil, fmt.Errorf("malformed list")
 			}
 
 			childListNode := node.NewHTMLNode(tagName, nil)
@@ -355,14 +353,13 @@ func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preproce
 // manage tokens that get accumulated into the paragraph (not a block basically)
 
 func (p *parser) flush() error {
-	if len(p.paragraph) > 0 {
+	if !isEmpty(p.paragraph) {
 		children := parseInline(p.paragraph)
 		p.document.Children = append(p.document.Children, node.NewHTMLNode("p", nil, children.GetChildren()...))
 		if p.paragraph[len(p.paragraph)-1].Variant == TokenIndent {
 			p.document.Children = append(p.document.Children, node.NewHTMLNode("br", nil))
 		}
 		p.paragraph = nil
-		p.paragraphLine = p.line
 	}
 	return nil
 }
@@ -380,11 +377,9 @@ func (p *parser) appendToParagraph(token Token) {
 	p.paragraph = append(p.paragraph, token)
 }
 
-// use instead of Next() to track line numbers
 func (p *parser) consume() Token {
 	token := p.Current()
 	if token.Variant == TokenNewline {
-		p.line++
 		p.isNewline = true
 	} else {
 		p.isNewline = false
@@ -398,9 +393,9 @@ func (p *parser) expectCurrentToken(tokenVariant TokenVariant) (Token, error) {
 	case tokenVariant:
 		return actualToken, nil
 	case TokenEOF:
-		return Token{}, fmt.Errorf("unexpected end of input %s", p.errorAt())
+		return Token{}, fmt.Errorf("unexpected end of input ")
 	default:
-		return Token{}, fmt.Errorf("unexpected token %v %s", actualToken, p.errorAt())
+		return Token{}, fmt.Errorf("unexpected token %v", actualToken)
 	}
 }
 
@@ -420,8 +415,4 @@ func (p *parser) collectUntil(tokenVariant TokenVariant) []Token {
 	}
 	// ends at the tokenVariant
 	return result
-}
-
-func (p *parser) errorAt() string {
-	return fmt.Sprintf("at line %d", p.line)
 }

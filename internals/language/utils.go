@@ -38,6 +38,16 @@ func trimTokens(tokens []Token, tokenVariant TokenVariant) []Token {
 	return tokens
 }
 
-func preprocessTokensNoop(tokens []Token) []Token {
-	return tokens
+func isEmpty(tokens []Token) bool {
+	if len(tokens) == 0 {
+		return true
+	}
+
+	for _, token := range tokens {
+		if len(strings.TrimSpace(token.String())) > 0 {
+			return false
+		}
+	}
+
+	return true
 }

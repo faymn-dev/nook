@@ -26,8 +26,8 @@ func TestLanguage(t *testing.T) {
 		},
 		{
 			Name:   "paragraphs",
-			Input:  "This is **bolded** paragraph\ntext in a p\ntag here\nThis is another paragraph with *italic* text and `code` here",
-			Output: "<p>This is <strong>bolded</strong> paragraph</p><p>text in a p</p><p>tag here</p><p>This is another paragraph with <em>italic</em> text and <code>code</code> here</p>",
+			Input:  "This is **bolded** paragraph\ntext in a p\ntag here\n\nThis is another paragraph with *italic* text and `code` here",
+			Output: "<p>This is <strong>bolded</strong> paragraph text in a p tag here</p><p>This is another paragraph with <em>italic</em> text and <code>code</code> here</p>",
 		},
 	}
 

@@ -14,10 +14,7 @@ type Renderer interface {
 
 const FragmentTagName = "fragment"
 
-var selfTerminates = []string{
-	"img",
-	"br",
-}
+var selfTerminates = []string{"img", "br", "hr"}
 
 type HTMLProps map[string]string
 
@@ -58,7 +55,7 @@ func (h *HTMLNode) ToHTML() string {
 		}
 
 		if slices.Index(selfTerminates, h.Tag) != -1 { // self terminates
-			sb.WriteString("/>")
+			sb.WriteString(" />")
 			return sb.String()
 		} else {
 			sb.WriteString(">")

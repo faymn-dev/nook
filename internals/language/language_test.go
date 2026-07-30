@@ -17,14 +17,14 @@ func TestLanguage(t *testing.T) {
 		{
 			Name:   "text to text nodes",
 			Input:  "This is **text** with an *italic* word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)",
-			Output: "<p>This is <strong>text</strong></p>",
+			Output: `<p>This is <strong>text</strong> with an <em>italic</em> word and a <code>code block</code> and an <img src="https://i.imgur.com/fJRm4Vk.jpeg" alt="obi wan image" /> and a <a href="https://boot.dev">link</a></p>`,
 		},
 	}
 
 	for _, example := range examples {
 		output := language.Render(example.Input)
 		if output != example.Output {
-			t.Errorf("%s:\n\texpected %s\n\tgot %s", example.Name, example.Output, output)
+			t.Errorf("%s:\n  expected %s\n  got %s", example.Name, example.Output, output)
 		}
 	}
 }

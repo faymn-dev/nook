@@ -49,8 +49,10 @@ func (h *HTMLNode) ToHTML() string {
 	if h.Tag != FragmentTagName {
 		fmt.Fprintf(&sb, "<%s", h.Tag)
 		if h.Props != nil {
-			for key, value := range h.Props {
-				fmt.Fprintf(&sb, " %s=\"%s\"", key, value)
+			keys := getKeys(h.Props)
+			slices.Sort(keys)
+			for _, key := range keys {
+				fmt.Fprintf(&sb, " %s=\"%s\"", key, h.Props[key])
 			}
 		}
 
@@ -79,4 +81,14 @@ func (h *HTMLNode) GetTagName() string {
 
 func (h *HTMLNode) GetChildren() []Renderer {
 	return h.Children
+}
+
+func getKeys(m map[string]string) []string {
+	result := make([]string, len(m))
+	i := 0
+	for key := range m {
+		result[i] = key
+		i++
+	}
+	return result
 }

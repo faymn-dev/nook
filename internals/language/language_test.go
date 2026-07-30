@@ -15,9 +15,19 @@ func TestLanguage(t *testing.T) {
 
 	examples := []Example{
 		{
+			Name:   "nothing",
+			Input:  "",
+			Output: "",
+		},
+		{
 			Name:   "text to text nodes",
 			Input:  "This is **text** with an *italic* word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)",
-			Output: `<p>This is <strong>text</strong> with an <em>italic</em> word and a <code>code block</code> and an <img src="https://i.imgur.com/fJRm4Vk.jpeg" alt="obi wan image" /> and a <a href="https://boot.dev">link</a></p>`,
+			Output: `<p>This is <strong>text</strong> with an <em>italic</em> word and a <code>code block</code> and an <img alt="obi wan image" src="https://i.imgur.com/fJRm4Vk.jpeg" /> and a <a href="https://boot.dev">link</a></p>`,
+		},
+		{
+			Name:   "paragraphs",
+			Input:  "This is **bolded** paragraph\ntext in a p\ntag here\nThis is another paragraph with *italic* text and `code` here",
+			Output: "<p>This is <strong>bolded</strong> paragraph</p><p>text in a p</p><p>tag here</p><p>This is another paragraph with <em>italic</em> text and <code>code</code> here</p>",
 		},
 	}
 

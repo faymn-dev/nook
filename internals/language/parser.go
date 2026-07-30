@@ -14,7 +14,14 @@ func Parse(tokens []Token) (node.Renderer, error) {
 loop:
 	for p.HasData() {
 		current := p.Current()
-		if !p.isNewline && current.Variant != TokenNewline {
+		if current.Variant == TokenNewline {
+			p.flush()
+			p.isNewline = true
+			p.consume()
+			continue
+		}
+
+		if !p.isNewline {
 			p.appendToParagraph(current)
 			p.consume()
 			continue

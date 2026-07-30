@@ -80,6 +80,107 @@ func TestInlineParser(t *testing.T) {
 				),
 			),
 		},
+		{
+			Name: "simple link",
+			Input: []Token{
+				{Variant: TokenLBracket},
+				{Variant: TokenString, Value: "Google"},
+				{Variant: TokenRBracket},
+				{Variant: TokenLParen},
+				{Variant: TokenString, Value: "https://google.com"},
+				{Variant: TokenRParen},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("a", map[string]string{"href": "https://google.com"},
+					node.TextNode("Google"),
+				),
+			),
+		},
+		{
+			Name: "formatted text inside link",
+			Input: []Token{
+				{Variant: TokenLBracket},
+				{Variant: TokenStar},
+				{Variant: TokenString, Value: "italic link"},
+				{Variant: TokenStar},
+				{Variant: TokenRBracket},
+				{Variant: TokenLParen},
+				{Variant: TokenString, Value: "https://example.com"},
+				{Variant: TokenRParen},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("a", map[string]string{"href": "https://example.com"},
+					node.NewHTMLNode("em", nil,
+						node.TextNode("italic link"),
+					),
+				),
+			),
+		},
+		{
+			Name: "simple image",
+			Input: []Token{
+				{Variant: TokenBang},
+				{Variant: TokenLBracket},
+				{Variant: TokenString, Value: "Alt text"},
+				{Variant: TokenRBracket},
+				{Variant: TokenLParen},
+				{Variant: TokenString, Value: "https://example.com/image.png"},
+				{Variant: TokenRParen},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("img", map[string]string{
+					"src": "https://example.com/image.png",
+					"alt": "Alt text",
+				}),
+			),
+		},
+		{
+			Name: "image inside link",
+			Input: []Token{
+				{Variant: TokenLBracket},
+				{Variant: TokenBang},
+				{Variant: TokenLBracket},
+				{Variant: TokenString, Value: "Clickable Image"},
+				{Variant: TokenRBracket},
+				{Variant: TokenLParen},
+				{Variant: TokenString, Value: "https://example.com/image.png"},
+				{Variant: TokenRParen},
+				{Variant: TokenRBracket},
+				{Variant: TokenLParen},
+				{Variant: TokenString, Value: "https://example.com"},
+				{Variant: TokenRParen},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("a", map[string]string{"href": "https://example.com"},
+					node.NewHTMLNode("img", map[string]string{
+						"src": "https://example.com/image.png",
+						"alt": "Clickable Image",
+					}),
+				),
+			),
+		},
+		{
+			Name: "image with empty alt text",
+			Input: []Token{
+				{Variant: TokenBang},
+				{Variant: TokenLBracket},
+				{Variant: TokenRBracket},
+				{Variant: TokenLParen},
+				{Variant: TokenString, Value: "https://example.com/photo.jpg"},
+				{Variant: TokenRParen},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("img", map[string]string{
+					"src": "https://example.com/photo.jpg",
+					"alt": "",
+				}),
+			),
+		},
 	}
 
 	for _, example := range examples {

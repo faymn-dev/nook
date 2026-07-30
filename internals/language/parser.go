@@ -178,11 +178,11 @@ func (p *parser) tryParseLink() node.Renderer {
 
 	label, err := parseInline(parsedBrackets.label)
 	if err != nil {
-		label = node.TextNode(stringifyTokens(parsedBrackets.label))
+		label = node.NewHTMLFragment(node.TextNode(stringifyTokens(parsedBrackets.label)))
 	}
 	href := stringifyTokens(parsedBrackets.url)
 
-	return node.NewHTMLNode("a", node.HTMLProps{"href": href}, label)
+	return node.NewHTMLNode("a", node.HTMLProps{"href": href}, label.GetChildren()...)
 }
 
 type parsedBrackets struct {
@@ -231,11 +231,11 @@ func (p *parser) tryParseBrackets() *parsedBrackets {
 	}
 
 	result := &parsedBrackets{
-		label: p.data[:closeBracketIndex],
-		url:   p.data[openParenIndex+1 : closeBracketIndex],
+		label: p.data[1:closeBracketIndex],
+		url:   p.data[openParenIndex+1 : closeParenIndex],
 	}
 
-	p.data = p.data[closeBracketIndex:]
+	p.data = p.data[closeParenIndex:]
 
 	return result
 }

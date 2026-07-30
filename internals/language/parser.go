@@ -154,6 +154,9 @@ func newParser(tokens []Token) *parser {
 // actually parse stuff
 
 func (p *parser) tryParseImage() node.Renderer {
+	if p.Current().Variant != TokenBang {
+		return nil
+	}
 	p.consume() // skip !
 
 	parsedBrackets := p.tryParseBrackets()

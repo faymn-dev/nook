@@ -116,8 +116,6 @@ loop:
 			result = p.tryParseImage()
 		case TokenLBracket:
 			result = p.tryParseLink()
-		default:
-			p.appendToDocument(current)
 		}
 
 		if err != nil {
@@ -303,6 +301,7 @@ func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (no
 	return parentList, nil
 }
 
+// TODO make this a "try" method
 func (p *parser) inlineParseToken(variant TokenVariant, inlineParse bool, parent []string) (node.Renderer, error) {
 	p.consume() // skip current
 

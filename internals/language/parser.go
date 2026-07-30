@@ -31,9 +31,9 @@ loop:
 			}
 			p.consume() // skip heading
 
-			textNode, err := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
-			if err != nil {
-				return nil, err
+			textNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
+			if textNode != nil {
+				// do something gracefully
 			}
 
 			tagName := fmt.Sprintf("h%d", level)
@@ -81,54 +81,49 @@ loop:
 	return p.document, nil
 }
 
-func parseInline(tokens []Token) (node.Renderer, error) {
+func parseInline(tokens []Token) node.Renderer {
 	tokens = append(tokens, Token{Variant: TokenEOF})
 	p := &parser{
 		Stream: Stream[Token]{
 			data: tokens,
 		},
-		document: node.NewHTMLFragment(),
 	}
+	inlineFragment := node.NewHTMLFragment()
 
 loop:
 	for p.HasData() {
 		current := p.Current()
 
 		var result node.Renderer
-		var err error
-
 		switch current.Variant {
 		case TokenEOF:
 			break loop
 		case TokenStar:
-			result, err = p.inlineParseToken(TokenStar, true, []string{"em"})
+			result = p.tryParseInline(TokenStar, true, []string{"em"})
 		case TokenDoubleStar:
-			result, err = p.inlineParseToken(TokenDoubleStar, true, []string{"strong"})
+			result = p.tryParseInline(TokenDoubleStar, true, []string{"strong"})
 		case TokenTripleStar:
-			result, err = p.inlineParseToken(TokenTripleStar, true, []string{"strong", "em"})
+			result = p.tryParseInline(TokenTripleStar, true, []string{"strong", "em"})
 		case TokenCode:
-			result, err = p.inlineParseToken(TokenCode, false, []string{"code"})
+			result = p.tryParseInline(TokenCode, false, []string{"code"})
 		case TokenStrikethrough:
-			result, err = p.inlineParseToken(TokenStrikethrough, true, []string{"s"})
+			result = p.tryParseInline(TokenStrikethrough, true, []string{"s"})
 		case TokenHighlight:
-			result, err = p.inlineParseToken(TokenHighlight, true, []string{"mark"})
+			result = p.tryParseInline(TokenHighlight, true, []string{"mark"})
 		case TokenBang:
 			result = p.tryParseImage()
 		case TokenLBracket:
 			result = p.tryParseLink()
 		}
 
-		if err != nil {
-			return nil, err
-		} else if result != nil {
-			p.document.Children = append(p.document.Children, result)
-		} else {
-			p.appendToDocument(current)
+		if result == nil {
+			result = node.TextNode(current.String())
 		}
+		inlineFragment.Children = append(inlineFragment.Children, result)
 		p.consume()
 	}
 
-	return p.document, nil
+	return inlineFragment
 }
 
 type parser struct {
@@ -176,10 +171,7 @@ func (p *parser) tryParseLink() node.Renderer {
 		return nil
 	}
 
-	label, err := parseInline(parsedBrackets.label)
-	if err != nil {
-		label = node.NewHTMLFragment(node.TextNode(stringifyTokens(parsedBrackets.label)))
-	}
+	label := parseInline(parsedBrackets.label)
 	href := stringifyTokens(parsedBrackets.url)
 
 	return node.NewHTMLNode("a", node.HTMLProps{"href": href}, label.GetChildren()...)
@@ -262,9 +254,9 @@ func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (no
 		}
 		p.consume() // skip list item
 
-		contentNode, err := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
-		if err != nil {
-			return nil, err
+		contentNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
+		if contentNode == nil {
+			// TODO something something gracefully
 		}
 		p.consume() // skip new line
 
@@ -304,24 +296,31 @@ func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (no
 	return parentList, nil
 }
 
-// TODO make this a "try" method
-func (p *parser) inlineParseToken(variant TokenVariant, inlineParse bool, parent []string) (node.Renderer, error) {
+func (p *parser) tryParseInline(variant TokenVariant, useInlineParse bool, parent []string) node.Renderer {
+	if p.Current().Variant != variant {
+		return nil
+	}
 	p.consume() // skip current
 
-	tokens := p.collectUntil(variant)
-	p.consume() // skip variant
-
-	var result node.Renderer
-	var err error
-	if inlineParse {
-		result, err = parseInline(tokens)
-	} else {
-		result = node.NewHTMLFragment(node.TextNode(stringifyTokens(tokens)))
+	closeVariantIndex := -1
+	for i := range len(p.data) {
+		token := p.data[i]
+		if token.Variant == variant {
+			closeVariantIndex = i
+			break
+		}
 	}
 
-	if err != nil {
-		// TODO more descriptive errors
-		return nil, err
+	if closeVariantIndex == -1 {
+		return nil
+	}
+
+	tokens := p.data[:closeVariantIndex]
+	var result node.Renderer
+	if useInlineParse {
+		result = parseInline(tokens)
+	} else {
+		result = node.NewHTMLFragment(node.TextNode(stringifyTokens(tokens)))
 	}
 
 	children := result
@@ -335,27 +334,22 @@ func (p *parser) inlineParseToken(variant TokenVariant, inlineParse bool, parent
 		}
 	}
 
-	return children, nil
+	p.data = p.data[closeVariantIndex:]
+
+	return children
 }
 
-func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preprocessTokens func([]Token) []Token) (node.Renderer, error) {
+func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preprocessTokens func([]Token) []Token) node.Renderer {
 	tokens := p.collectUntil(tokenVariant)
-	node, err := parseInline(preprocessTokens(tokens))
-	if err != nil {
-		return nil, err
-	}
-	return node, nil
+	node := parseInline(preprocessTokens(tokens))
+	return node
 }
 
 // manage tokens that get accumulated into the paragraph (not a block basically)
 
 func (p *parser) flush() error {
 	if len(p.paragraph) > 0 {
-		children, err := parseInline(p.paragraph)
-		if err != nil {
-			return err
-		}
-
+		children := parseInline(p.paragraph)
 		p.document.Children = append(p.document.Children, node.NewHTMLNode("p", nil, children.GetChildren()...))
 		if p.paragraph[len(p.paragraph)-1].Variant == TokenIndent {
 			p.document.Children = append(p.document.Children, node.NewHTMLNode("br", nil))
@@ -377,11 +371,6 @@ func (p *parser) appendChild(node node.Renderer) error {
 // use this when parsing blocks
 func (p *parser) appendToParagraph(token Token) {
 	p.paragraph = append(p.paragraph, token)
-}
-
-// use this when parsing inline
-func (p *parser) appendToDocument(tokens ...Token) {
-	p.document.Children = append(p.document.Children, node.TextNode(stringifyTokens(tokens)))
 }
 
 // use instead of Next() to track line numbers

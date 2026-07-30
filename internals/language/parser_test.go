@@ -184,12 +184,7 @@ func TestInlineParser(t *testing.T) {
 	}
 
 	for _, example := range examples {
-		output, err := parseInline(example.Input)
-		if err != nil {
-			t.Errorf("%s: %v", example.Name, err)
-			continue
-		}
-
+		output := parseInline(example.Input)
 		if !reflect.DeepEqual(output, example.Output) {
 			formatted, _ := json.MarshalIndent(output, "", "  ")
 			t.Errorf("%s: got %s", example.Name, string(formatted))

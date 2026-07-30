@@ -83,7 +83,7 @@ func TestInlineParser(t *testing.T) {
 	}
 
 	for _, example := range examples {
-		output, err := parseInline(0, example.Input)
+		output, err := parseInline(example.Input)
 		if err != nil {
 			t.Errorf("%s: %v", example.Name, err)
 			continue

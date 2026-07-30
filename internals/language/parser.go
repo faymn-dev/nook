@@ -57,67 +57,17 @@ loop:
 		case TokenSeparator:
 			p.appendChild(node.NewHTMLNode("br", nil))
 		case TokenListItem:
-			type listContext struct {
-				level int
-				list  *node.HTMLNode
+			parentList, err := p.parseListItem("ul", TokenListItem)
+			if err != nil {
+				return nil, err
 			}
-
-			parentList := node.NewHTMLNode("ul", nil)
-			stack := []listContext{{level: 0, list: parentList}}
-
-			// approach: given the parent (ctx), parse each incoming list item
-			for {
-
-				level := 0
-				if p.Current().Variant == TokenIndent {
-					level = len(p.Current().Value) / indentSize
-					p.consume() // skip indentation
-				}
-
-				if _, err := p.expectCurrentToken(TokenListItem); err != nil {
-					return nil, fmt.Errorf("expected list item token %s", p.errorAt())
-				}
-				p.consume() // skip list item
-
-				contentNode, err := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
-				if err != nil {
-					return nil, err
-				}
-				p.consume() // skip new line
-
-				liNode := node.NewHTMLNode("li", nil, contentNode.GetChildren()...)
-
-				// decide where the list item (liNode) should go
-				top := stack[len(stack)-1]
-				if level > top.level { // deeper level, so add it to last li of parent
-					var parentLiNode *node.HTMLNode
-					if len(top.list.Children) > 0 {
-						parentLiNode = top.list.Children[len(top.list.Children)-1].(*node.HTMLNode)
-					} else {
-						return nil, fmt.Errorf("malformed list %s", p.errorAt())
-					}
-
-					childListNode := node.NewHTMLNode("ul", nil)
-					// childListNode.Children = append(childListNode.Children, liNode)
-					parentLiNode.Children = append(parentLiNode.Children, childListNode)
-					stack = append(stack, listContext{
-						list:  childListNode,
-						level: level,
-					})
-				} else if level < top.level { // pop until we find context at/above level
-					for len(stack) > 1 && stack[len(stack)-1].level >= level {
-						stack = stack[:len(stack)-1]
-					}
-				}
-
-				currentList := stack[len(stack)-1].list
-				currentList.Children = append(currentList.Children, liNode)
-
-				if !(p.Current().Variant == TokenIndent || p.Current().Variant == TokenListItem) {
-					break
-				}
+			p.appendChild(parentList)
+			continue
+		case TokenNumberedListItem:
+			parentList, err := p.parseListItem("ol", TokenNumberedListItem)
+			if err != nil {
+				return nil, err
 			}
-
 			p.appendChild(parentList)
 			continue
 		default:
@@ -131,44 +81,51 @@ loop:
 	return p.document, nil
 }
 
-func parseInline(line int, tokens []Token) (node.Renderer, error) {
+func parseInline(tokens []Token) (node.Renderer, error) {
 	tokens = append(tokens, Token{Variant: TokenEOF})
 	p := &parser{
 		Stream: Stream[Token]{
 			data: tokens,
 		},
 		document: node.NewHTMLFragment(),
-		line:     line,
 	}
 
 loop:
 	for p.HasData() {
 		current := p.Current()
 
+		var result node.Renderer
 		var err error
+
 		switch current.Variant {
 		case TokenEOF:
 			break loop
 		case TokenStar:
-			_, err = p.inlineParseToken(TokenStar, true, []string{"em"})
+			result, err = p.inlineParseToken(TokenStar, true, []string{"em"})
 		case TokenDoubleStar:
-			_, err = p.inlineParseToken(TokenDoubleStar, true, []string{"strong"})
+			result, err = p.inlineParseToken(TokenDoubleStar, true, []string{"strong"})
 		case TokenTripleStar:
-			_, err = p.inlineParseToken(TokenTripleStar, true, []string{"strong", "em"})
+			result, err = p.inlineParseToken(TokenTripleStar, true, []string{"strong", "em"})
 		case TokenCode:
-			_, err = p.inlineParseToken(TokenCode, false, []string{"code"})
+			result, err = p.inlineParseToken(TokenCode, false, []string{"code"})
 		case TokenStrikethrough:
-			_, err = p.inlineParseToken(TokenStrikethrough, true, []string{"s"})
+			result, err = p.inlineParseToken(TokenStrikethrough, true, []string{"s"})
 		case TokenHighlight:
-			_, err = p.inlineParseToken(TokenHighlight, true, []string{"mark"})
+			result, err = p.inlineParseToken(TokenHighlight, true, []string{"mark"})
 		case TokenBang:
+			result = p.tryParseImage()
 		case TokenLBracket:
+			result = p.tryParseLink()
 		default:
 			p.appendToDocument(current)
 		}
 
 		if err != nil {
 			return nil, err
+		} else if result != nil {
+			p.document.Children = append(p.document.Children, result)
+		} else {
+			p.appendToDocument(current)
 		}
 		p.consume()
 	}
@@ -197,17 +154,165 @@ func newParser(tokens []Token) *parser {
 }
 
 // actually parse stuff
+
+func (p *parser) tryParseImage() node.Renderer {
+	p.consume() // skip !
+
+	parsedBrackets := p.tryParseBrackets()
+	if parsedBrackets == nil {
+		return nil
+	}
+
+	alt := stringifyTokens(parsedBrackets.label)
+	src := stringifyTokens(parsedBrackets.url)
+
+	return node.NewHTMLNode("img", node.HTMLProps{"src": src, "alt": alt})
+}
+
+func (p *parser) tryParseLink() node.Renderer {
+	parsedBrackets := p.tryParseBrackets()
+	if parsedBrackets == nil {
+		return nil
+	}
+
+	label, err := parseInline(parsedBrackets.label)
+	if err != nil {
+		label = node.TextNode(stringifyTokens(parsedBrackets.label))
+	}
+	href := stringifyTokens(parsedBrackets.url)
+
+	return node.NewHTMLNode("a", node.HTMLProps{"href": href}, label)
+}
+
+type parsedBrackets struct {
+	label []Token
+	url   []Token
+}
+
+func (p *parser) tryParseBrackets() *parsedBrackets {
+	bracketDepth := 0
+	closeBracketIndex := -1
+
+	// find matching bracket
+	for i := range len(p.data) {
+		token := p.data[i]
+		switch token.Variant {
+		case TokenLBracket:
+			bracketDepth += 1
+		case TokenRBracket:
+			bracketDepth -= 1
+		}
+
+		if bracketDepth == 0 {
+			closeBracketIndex = i
+			break
+		}
+	}
+
+	openParenIndex := closeBracketIndex + 1
+	closeParenIndex := -1
+
+	// bracket never closed or open paren does not follow ]
+	if closeBracketIndex == -1 || p.PeekOffset(openParenIndex).Variant != TokenLParen {
+		return nil
+	}
+
+	for i := openParenIndex; i < len(p.data); i++ {
+		token := p.data[i]
+		if token.Variant == TokenRParen {
+			closeParenIndex = i
+			break
+		}
+	}
+
+	if closeParenIndex == -1 {
+		return nil
+	}
+
+	result := &parsedBrackets{
+		label: p.data[:closeBracketIndex],
+		url:   p.data[openParenIndex+1 : closeBracketIndex],
+	}
+
+	p.data = p.data[closeBracketIndex:]
+
+	return result
+}
+
+func (p *parser) parseListItem(tagName string, listItemVariant TokenVariant) (node.Renderer, error) {
+	type listContext struct {
+		level int
+		list  *node.HTMLNode
+	}
+
+	parentList := node.NewHTMLNode(tagName, nil)
+	stack := []listContext{{level: 0, list: parentList}}
+
+	// approach: given the parent (ctx), parse each incoming list item
+	for {
+		level := 0
+		if p.Current().Variant == TokenIndent {
+			level = len(p.Current().Value) / indentSize
+			p.consume() // skip indentation
+		}
+
+		if _, err := p.expectCurrentToken(listItemVariant); err != nil {
+			return nil, fmt.Errorf("expected list item token %s", p.errorAt())
+		}
+		p.consume() // skip list item
+
+		contentNode, err := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
+		if err != nil {
+			return nil, err
+		}
+		p.consume() // skip new line
+
+		liNode := node.NewHTMLNode("li", nil, contentNode.GetChildren()...)
+
+		// decide where the list item (liNode) should go
+		top := stack[len(stack)-1]
+		if level > top.level { // deeper level, so add it to last li of parent
+			var parentLiNode *node.HTMLNode
+			if len(top.list.Children) > 0 {
+				parentLiNode = top.list.Children[len(top.list.Children)-1].(*node.HTMLNode)
+			} else {
+				return nil, fmt.Errorf("malformed list %s", p.errorAt())
+			}
+
+			childListNode := node.NewHTMLNode(tagName, nil)
+			parentLiNode.Children = append(parentLiNode.Children, childListNode)
+			stack = append(stack, listContext{
+				list:  childListNode,
+				level: level,
+			})
+		} else if level < top.level { // pop until we find context at/above level
+			for len(stack) > 1 && stack[len(stack)-1].level >= level {
+				stack = stack[:len(stack)-1]
+			}
+		}
+
+		// add list item to current list
+		currentList := stack[len(stack)-1].list
+		currentList.Children = append(currentList.Children, liNode)
+
+		if !(p.Current().Variant == TokenIndent || p.Current().Variant == listItemVariant) {
+			break
+		}
+	}
+
+	return parentList, nil
+}
+
 func (p *parser) inlineParseToken(variant TokenVariant, inlineParse bool, parent []string) (node.Renderer, error) {
 	p.consume() // skip current
 
-	line := p.line
 	tokens := p.collectUntil(variant)
 	p.consume() // skip variant
 
 	var result node.Renderer
 	var err error
 	if inlineParse {
-		result, err = parseInline(line, tokens)
+		result, err = parseInline(tokens)
 	} else {
 		result = node.NewHTMLFragment(node.TextNode(stringifyTokens(tokens)))
 	}
@@ -228,15 +333,12 @@ func (p *parser) inlineParseToken(variant TokenVariant, inlineParse bool, parent
 		}
 	}
 
-	p.document.Children = append(p.document.Children, children)
-
 	return children, nil
 }
 
 func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preprocessTokens func([]Token) []Token) (node.Renderer, error) {
-	line := p.line
 	tokens := p.collectUntil(tokenVariant)
-	node, err := parseInline(line, preprocessTokens(tokens))
+	node, err := parseInline(preprocessTokens(tokens))
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +349,7 @@ func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preproce
 
 func (p *parser) flush() error {
 	if len(p.paragraph) > 0 {
-		children, err := parseInline(p.paragraphLine, p.paragraph)
+		children, err := parseInline(p.paragraph)
 		if err != nil {
 			return err
 		}

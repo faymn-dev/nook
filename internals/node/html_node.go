@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -12,6 +13,11 @@ type Renderer interface {
 }
 
 const FragmentTagName = "fragment"
+
+var selfTerminates = []string{
+	"img",
+	"br",
+}
 
 type HTMLProps map[string]string
 
@@ -50,6 +56,12 @@ func (h *HTMLNode) ToHTML() string {
 				fmt.Fprintf(&sb, " %s=\"%s\"", key, value)
 			}
 		}
+	}
+
+	if slices.Index(selfTerminates, h.Tag) != -1 { // self terminates
+		sb.WriteString("/>")
+		return sb.String()
+	} else {
 		sb.WriteString(">")
 	}
 

@@ -3,7 +3,7 @@ package node_test
 import (
 	"testing"
 
-	"github.com/faymn-dev/initiator/internals/node"
+	"github.com/faymn-dev/nook/internals/node"
 )
 
 func TestHTMLNodeToHTML(t *testing.T) {

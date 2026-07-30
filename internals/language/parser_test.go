@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/faymn-dev/initiator/internals/node"
+	"github.com/faymn-dev/nook/internals/node"
 )
 
 func TestInlineParser(t *testing.T) {

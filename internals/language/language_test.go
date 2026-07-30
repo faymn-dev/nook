@@ -3,7 +3,7 @@ package language_test
 import (
 	"testing"
 
-	"github.com/faymn-dev/initiator/internals/language"
+	"github.com/faymn-dev/nook/internals/language"
 )
 
 func TestLanguage(t *testing.T) {

@@ -3,7 +3,7 @@ package language
 import (
 	"fmt"
 
-	"github.com/faymn-dev/initiator/internals/node"
+	"github.com/faymn-dev/nook/internals/node"
 )
 
 const indentSize = 2

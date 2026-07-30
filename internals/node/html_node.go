@@ -56,13 +56,13 @@ func (h *HTMLNode) ToHTML() string {
 				fmt.Fprintf(&sb, " %s=\"%s\"", key, value)
 			}
 		}
-	}
 
-	if slices.Index(selfTerminates, h.Tag) != -1 { // self terminates
-		sb.WriteString("/>")
-		return sb.String()
-	} else {
-		sb.WriteString(">")
+		if slices.Index(selfTerminates, h.Tag) != -1 { // self terminates
+			sb.WriteString("/>")
+			return sb.String()
+		} else {
+			sb.WriteString(">")
+		}
 	}
 
 	for _, child := range h.Children {

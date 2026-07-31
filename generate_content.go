@@ -20,8 +20,6 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 	inputDir := cmd.StringArg("input-directory")
 	outputDir := cmd.String("output-directory")
 
-	title := cmd.String("title")
-
 	if cmd.Bool("clean") {
 		if err := removeContents(outputDir); err != nil {
 			return fmt.Errorf("failed to clean output directory: %w", err)
@@ -93,8 +91,6 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	head := createDocumentHead(title, styles)
-
 	var wg sync.WaitGroup
 	c := make(chan queueItem, len(queue))
 	for _, item := range queue {
@@ -111,7 +107,8 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 					return
 				}
 
-				err = os.WriteFile(replaceExtension(item.outputFile, ".html"), renderDocument(head, string(markdown)), permission)
+				err = os.WriteFile(replaceExtension(item.outputFile, ".html"), renderDocument(styles, string(markdown)), permission)
+
 				if err != nil {
 					log.Printf("failed to write %s: %v", item.inputFile, err)
 					return
@@ -122,7 +119,7 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 
 	wg.Wait()
 
-	log.Printf("finished building %s\n", title)
+	log.Println("finished building")
 	return nil
 }
 
@@ -131,8 +128,26 @@ type queueItem struct {
 	outputFile string
 }
 
-func renderDocument(head []node.Renderer, markdown string) []byte {
+func renderDocument(styles []string, markdown string) []byte {
 	body, _ := language.Parse(language.Tokenize(markdown))
+
+	// traverse body to find title
+	title := "untitled page"
+	stack := []node.Renderer{body}
+	for len(stack) > 0 {
+		top := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		topNode, ok := top.(*node.HTMLNode)
+		if ok && top.GetTagName() == "h1" {
+			title = topNode.TextContent()
+			break
+		}
+
+		stack = append(stack, top.GetChildren()...)
+	}
+
+	head := createDocumentHead(title, styles)
 	return []byte(node.NewDocument(head, []node.Renderer{body}).ToHTML())
 }
 

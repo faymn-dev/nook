@@ -26,11 +26,6 @@ func main() {
 				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
-						Name:  "title",
-						Value: "nook",
-						Usage: "title of your website",
-					},
-					&cli.StringFlag{
 						Name:    "output-directory",
 						Aliases: []string{"out"},
 						Value:   "public",
@@ -47,7 +42,6 @@ func main() {
 						Usage: "clean output directory",
 					},
 					// TODO blockquotes
-					// TODO support metadata inside of the markdown files, which can override titles
 					// TODO download theme command (literally go and fetch latest from GitHub)
 				},
 				Usage:  "generate static website",

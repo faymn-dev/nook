@@ -83,6 +83,19 @@ func (h *HTMLNode) GetChildren() []Renderer {
 	return h.Children
 }
 
+func (h *HTMLNode) TextContent() string {
+	var sb strings.Builder
+	for _, child := range h.Children {
+		switch c := child.(type) {
+		case *HTMLNode:
+			sb.WriteString(c.TextContent())
+		case TextNode:
+			sb.WriteString(c.ToHTML())
+		}
+	}
+	return sb.String()
+}
+
 func getKeys(m map[string]string) []string {
 	result := make([]string, len(m))
 	i := 0

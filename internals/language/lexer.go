@@ -91,7 +91,7 @@ func Tokenize(markdown string) []Token {
 		case '\n':
 			l.commitToken(Token{Variant: TokenNewline})
 		case ' ':
-			if l.Peek() == ' ' { // anything more than two spaces is considered indentation
+			if (l.Previous() == '\n' || l.Previous() == 0) && l.Peek() == ' ' { // anything more than two spaces at the start of the line is considered indentation
 				l.commitToken(Token{Variant: TokenIndent, Value: string(l.collectWhile(' '))})
 				continue
 			} else {

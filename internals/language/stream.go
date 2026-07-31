@@ -1,11 +1,13 @@
 package language
 
 type Stream[T comparable] struct {
-	data []T
+	data     []T
+	previous T
 }
 
 func (s *Stream[T]) Next() T {
 	if s.HasData() {
+		s.previous = s.data[0]
 		s.data = s.data[1:]
 	}
 	return s.Current()
@@ -17,6 +19,10 @@ func (s *Stream[T]) HasData() bool {
 
 func (s *Stream[T]) HasNext() bool {
 	return len(s.data) > 1
+}
+
+func (s *Stream[T]) Previous() T {
+	return s.previous
 }
 
 func (s *Stream[T]) Current() T {
@@ -33,7 +39,11 @@ func (s *Stream[T]) Peek() T {
 }
 
 func (s *Stream[T]) PeekOffset(offset int) T {
-	if offset < len(s.data) {
+	if offset == -1 {
+		return s.Previous()
+	}
+
+	if offset < len(s.data) && offset >= 0 {
 		return s.data[offset]
 	}
 

@@ -30,8 +30,9 @@ nook . --clean --copy-markdown --out-directory dist
 If `css` files are found in the input directory, they are automatically included
 into all of the pages (added in lexical order).
 
-The classic `nook` theme can be downloaded:
+The classic `nook` theme can be downloaded like so:
 
 ```bash
 nook theme classic
+# downloads to nook.css
 ```

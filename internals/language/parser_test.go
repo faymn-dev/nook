@@ -184,7 +184,7 @@ func TestInlineParser(t *testing.T) {
 	}
 
 	for _, example := range examples {
-		output := parseInline(example.Input)
+		output := inlineParse(example.Input)
 		if !reflect.DeepEqual(output, example.Output) {
 			formatted, _ := json.MarshalIndent(output, "", "  ")
 			t.Errorf("%s: got %s", example.Name, string(formatted))
@@ -435,31 +435,6 @@ func TestParser(t *testing.T) {
 		if !reflect.DeepEqual(output, example.Output) {
 			formatted, _ := json.MarshalIndent(output, "", "  ")
 			t.Errorf("%s: got %s", example.Name, string(formatted))
-		}
-	}
-}
-
-func TestParserErrors(t *testing.T) {
-	type Example struct {
-		Name  string
-		Input []Token
-	}
-
-	examples := []Example{
-		{
-			Name: "bad code block",
-			Input: []Token{
-				{Variant: TokenCodeBlock},
-				{Variant: TokenString, Value: "let x = 10;"},
-				{Variant: TokenEOF},
-			},
-		},
-	}
-
-	for _, example := range examples {
-		_, err := Parse(example.Input)
-		if err == nil {
-			t.Errorf("%s: expected error", example.Name)
 		}
 	}
 }

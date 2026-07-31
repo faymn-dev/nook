@@ -260,6 +260,26 @@ func TestTokenizer(t *testing.T) {
 				{Variant: TokenEOF},
 			},
 		},
+
+		// indentation
+		{
+			Name:  "indentation at the start of a line",
+			Input: "  1. hello",
+			Output: []Token{
+				{Variant: TokenIndent, Value: "  "},
+				{Variant: TokenNumberedListItem, Value: "1."},
+				{Variant: TokenString, Value: " hello"},
+				{Variant: TokenEOF},
+			},
+		}, {
+			Name:  "no indentation anywhere else",
+			Input: "1. hel  lo  ",
+			Output: []Token{
+				{Variant: TokenNumberedListItem, Value: "1."},
+				{Variant: TokenString, Value: " hel  lo  "},
+				{Variant: TokenEOF},
+			},
+		},
 	}
 
 	for _, example := range examples {

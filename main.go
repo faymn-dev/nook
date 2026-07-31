@@ -46,16 +46,31 @@ func main() {
 						Value: false,
 						Usage: "clean output directory",
 					},
-					&cli.StringSliceFlag{
-						Name:  "ignore",
-						Usage: "folders and files to exclude from the build",
-					},
+					// TODO blockquotes
 					// TODO support metadata inside of the markdown files, which can override titles
-					// TODO download theme command (literally go and fetch from GitHub)
-					// TODO ignore files
+					// TODO download theme command (literally go and fetch latest from GitHub)
 				},
 				Usage:  "generate static website",
 				Action: generateContent,
+			},
+			{
+				Name:  "theme",
+				Usage: "download preset nook themes",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name:  "name",
+						Value: "classic",
+					},
+				},
+				Action: downloadTheme,
+				Commands: []*cli.Command{
+					{
+						Name:    "list",
+						Aliases: []string{"ls"},
+						Usage:   "list available themes",
+						Action:  listThemes,
+					},
+				},
 			},
 			{
 				Name:   "serve",

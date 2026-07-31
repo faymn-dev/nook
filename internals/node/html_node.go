@@ -14,7 +14,7 @@ type Renderer interface {
 
 const FragmentTagName = "fragment"
 
-var selfTerminates = []string{"img", "br", "hr"}
+var selfTerminates = []string{"img", "br", "hr", "link"}
 
 type HTMLProps map[string]string
 

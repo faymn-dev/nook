@@ -5,6 +5,12 @@
 It automatically mirrors the structure of your local Markdown files,
 and outputs unstyled HTML files.
 
+## Installation
+
+```bash
+go install github.com/faymn-dev/nook
+```
+
 ## Quick Start
 
 Simply run `nook` to build your local directory into a static website, outputted
@@ -24,4 +30,8 @@ nook . --clean --copy-markdown --out-directory dist
 If `css` files are found in the input directory, they are automatically included
 into all of the pages (added in lexical order).
 
-Sample themes can be found in `/themes`.
+The classic `nook` theme can be downloaded:
+
+```bash
+nook theme classic
+```

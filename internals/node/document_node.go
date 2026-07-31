@@ -7,11 +7,12 @@ import (
 const DocumentTagName = "document"
 
 type Document struct {
-	children []Renderer
+	head []Renderer
+	body []Renderer
 }
 
-func NewDocument(children ...Renderer) *Document {
-	return &Document{children: children}
+func NewDocument(head []Renderer, body []Renderer) *Document {
+	return &Document{head: head, body: body}
 }
 
 func (d *Document) ToHTML() string {
@@ -19,11 +20,17 @@ func (d *Document) ToHTML() string {
 
 	sb.WriteString("<!DOCTYPE html>")
 	sb.WriteString("<html lang=\"en\">")
-	for _, child := range d.children {
+	sb.WriteString("<head>")
+	for _, child := range d.head {
 		sb.WriteString(child.ToHTML())
 	}
+	sb.WriteString("</head>")
+	sb.WriteString("<body>")
+	for _, child := range d.body {
+		sb.WriteString(child.ToHTML())
+	}
+	sb.WriteString("</body>")
 	sb.WriteString("</html>")
-
 	return sb.String()
 }
 
@@ -32,5 +39,5 @@ func (d *Document) GetTagName() string {
 }
 
 func (d *Document) GetChildren() []Renderer {
-	return d.children
+	return d.body
 }

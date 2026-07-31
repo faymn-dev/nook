@@ -20,7 +20,7 @@ loop:
 			p.Next() // skip newline
 			p.Next() // skip newline
 			continue
-		} else if !(p.Previous().Variant == TokenNewline || p.Previous().Variant == TokenEOF) { // not a newline
+		} else if !(p.Previous().Variant == TokenNewline || p.Previous().Variant == TokenEOF) { // not a newline before, so don't process as block
 			p.appendToParagraph(current)
 			p.Next()
 			continue
@@ -62,7 +62,6 @@ loop:
 		case TokenNumberedListItem:
 			parentList := p.tryParseList("ol", TokenNumberedListItem)
 			p.appendChild(parentList)
-			continue
 		default:
 			p.appendToParagraph(current)
 		}

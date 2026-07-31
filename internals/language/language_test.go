@@ -34,6 +34,11 @@ func TestLanguage(t *testing.T) {
 			Input:  "```\nThis is text that _should_ remain\nthe **same** even with inline stuff```",
 			Output: "<pre data-language=\"\"><code>This is text that _should_ remain\nthe **same** even with inline stuff</code></pre>",
 		},
+		{
+			Name:   "basic list with some other things",
+			Input:  "1. hello\n2. world\nand some text",
+			Output: "<ol><li>hello</li><li>world</li></ol><p>and some text</p>",
+		},
 	}
 
 	for _, example := range examples {

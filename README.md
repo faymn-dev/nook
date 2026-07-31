@@ -1,3 +1,5 @@
 # nook
 
-A simple static site generator
+A fast static site generator
+
+## Preview

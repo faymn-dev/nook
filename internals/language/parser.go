@@ -31,18 +31,12 @@ loop:
 		switch current.Variant {
 		case TokenEOF:
 			break loop
+		case TokenNewline:
 		case TokenHeading:
-			level := len(current.Value)
-			if level > 7 {
-				return nil, fmt.Errorf("headings cannot be greater than level 7")
-			}
+			level := min(len(current.Value), 7)
 			p.consume() // skip heading
 
 			textNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
-			if textNode != nil {
-				// do something gracefully
-			}
-
 			tagName := fmt.Sprintf("h%d", level)
 			p.appendChild(node.NewHTMLNode(tagName, nil, textNode))
 		case TokenCodeBlock:

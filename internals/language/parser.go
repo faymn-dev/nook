@@ -15,26 +15,25 @@ loop:
 	for p.HasData() {
 		current := p.Current()
 
-		if current.Variant == TokenNewline && p.Peek().Variant == TokenNewline {
+		if current.Variant == TokenNewline && p.Peek().Variant == TokenNewline { // double newline
 			p.flush()
-			p.isNewline = true
-			p.consume() // skip newline
-			p.consume() // skip newline
+			p.Next() // skip newline
+			p.Next() // skip newline
 			continue
-		} else if !p.isNewline {
+		} else if !(p.Previous().Variant == TokenNewline || p.Previous().Variant == TokenEOF) { // not a newline
 			p.appendToParagraph(current)
-			p.consume()
+			p.Next()
 			continue
 		}
 
-		// this are "blocks" that have to be on newlines
+		// this are "blocks", meaning the previous token must be a newline
 		switch current.Variant {
 		case TokenEOF:
 			break loop
 		case TokenNewline:
 		case TokenHeading:
 			level := min(len(current.Value), 7)
-			p.consume() // skip heading
+			p.Next() // skip heading
 
 			textNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
 			tagName := fmt.Sprintf("h%d", level)
@@ -42,12 +41,12 @@ loop:
 		case TokenCodeBlock:
 			var language string
 			if p.Peek().Variant == TokenString {
-				language = p.consume().Value
+				language = p.Next().Value
 			}
 
-			p.consume() // skip code block
+			p.Next() // skip code block
 			if p.Current().Variant == TokenNewline {
-				p.consume()
+				p.Next()
 			}
 
 			codeTokens := p.collectUntil(TokenCodeBlock)
@@ -68,7 +67,7 @@ loop:
 			p.appendToParagraph(current)
 		}
 
-		p.consume()
+		p.Next()
 	}
 
 	p.flush()
@@ -114,7 +113,7 @@ loop:
 			result = node.TextNode(current.String())
 		}
 		inlineFragment.Children = append(inlineFragment.Children, result)
-		p.consume()
+		p.Next()
 	}
 
 	return inlineFragment
@@ -125,7 +124,6 @@ type parser struct {
 
 	document  *node.HTMLNode
 	paragraph []Token
-	isNewline bool
 }
 
 func newParser(tokens []Token) *parser {
@@ -133,8 +131,7 @@ func newParser(tokens []Token) *parser {
 		Stream: Stream[Token]{
 			data: tokens,
 		},
-		document:  node.NewHTMLFragment(),
-		isNewline: true,
+		document: node.NewHTMLFragment(),
 	}
 }
 
@@ -142,7 +139,7 @@ func (p *parser) tryParseImage() node.Renderer {
 	if p.Current().Variant != TokenBang {
 		return nil
 	}
-	p.consume() // skip !
+	p.Next() // skip !
 
 	parsedBrackets := p.tryParseBrackets()
 	if parsedBrackets == nil {
@@ -274,17 +271,17 @@ func (p *parser) tryParseList(tagName string, listItemVariant TokenVariant) node
 		level := 0
 		if listParser.Current().Variant == TokenIndent {
 			level = len(listParser.Current().Value) / indentSize
-			listParser.consume() // skip indentation
+			listParser.Next() // skip indentation
 		}
 
 		if _, err := listParser.expectCurrentToken(listItemVariant); err != nil {
 			return nil
 		}
-		listParser.consume() // skip list item
+		listParser.Next() // skip list item
 
 		contentNode := listParser.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
 
-		listParser.consume() // skip new line
+		listParser.Next() // skip new line
 
 		liNode := node.NewHTMLNode("li", nil, contentNode.GetChildren()...)
 
@@ -332,7 +329,7 @@ func (p *parser) trySymmetricParse(variant TokenVariant, useInlineParse bool, pa
 	if p.Current().Variant != variant {
 		return nil
 	}
-	p.consume() // skip current
+	p.Next() // skip current
 
 	closeVariantIndex := -1
 	for i := range len(p.data) {
@@ -404,16 +401,6 @@ func (p *parser) appendToParagraph(token Token) {
 	p.paragraph = append(p.paragraph, token)
 }
 
-func (p *parser) consume() Token {
-	token := p.Current()
-	if token.Variant == TokenNewline {
-		p.isNewline = true
-	} else {
-		p.isNewline = false
-	}
-	return p.Next()
-}
-
 func (p *parser) expectCurrentToken(tokenVariant TokenVariant) (Token, error) {
 	actualToken := p.Current()
 	switch actualToken.Variant {
@@ -433,7 +420,7 @@ func (p *parser) collectUntil(tokenVariant TokenVariant) []Token {
 	current := p.Current()
 	for p.HasData() && current.Variant != tokenVariant && current.Variant != TokenEOF {
 		result = append(result, current)
-		current = p.consume()
+		current = p.Next()
 	}
 	// ends at the tokenVariant
 	return result

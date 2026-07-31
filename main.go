@@ -20,8 +20,9 @@ const permission = 0755
 
 func main() {
 	cmd := &cli.Command{
-		Name:  "nook",
-		Usage: "a minimal static site generator",
+		Name:           "nook",
+		Usage:          "a minimal static site generator",
+		DefaultCommand: "build",
 		Commands: []*cli.Command{
 			{
 				Name: "build",
@@ -157,7 +158,7 @@ func generateStaticContent(_ context.Context, cmd *cli.Command) error {
 					return
 				}
 
-				html := []byte(language.Render(string(markdown)))
+				html := []byte(language.RenderDocument(string(markdown)))
 				err = os.WriteFile(replaceExtension(item.outputFile, ".html"), html, permission)
 				if err != nil {
 					log.Printf("failed to write %s: %v", item.inputFile, err)

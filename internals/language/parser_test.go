@@ -423,6 +423,48 @@ func TestParser(t *testing.T) {
 				),
 			),
 		},
+
+		{
+			Name: "single line blockquote with paragraph",
+			Input: []Token{
+				{Variant: TokenBlockquote, Value: ">"},
+				{Variant: TokenString, Value: "this would be in a paragraph"},
+				{Variant: TokenNewline},
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("blockquote", nil,
+					node.NewHTMLNode("p", nil, node.TextNode("this would be in a paragraph")),
+				),
+			),
+		},
+		{
+			Name: "multi-paragraph and nested blockquote",
+			Input: []Token{
+				{Variant: TokenBlockquote, Value: ">"},
+				{Variant: TokenString, Value: "this would be in a paragraph"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenBlockquote, Value: ">"},
+				{Variant: TokenString, Value: "this would be in a second paragraph"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenBlockquote, Value: ">>"},
+				{Variant: TokenString, Value: "this would be nested like so: blockquote > blockquote > p"},
+				{Variant: TokenNewline},
+
+				{Variant: TokenEOF},
+			},
+			Output: node.NewHTMLFragment(
+				node.NewHTMLNode("blockquote", nil,
+					node.NewHTMLNode("p", nil, node.TextNode("this would be in a paragraph")),
+					node.NewHTMLNode("p", nil, node.TextNode("this would be in a second paragraph")),
+					node.NewHTMLNode("blockquote", nil,
+						node.NewHTMLNode("p", nil, node.TextNode("this would be nested like so: blockquote > blockquote > p")),
+					),
+				),
+			),
+		},
 	}
 
 	for _, example := range examples {

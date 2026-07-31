@@ -42,6 +42,7 @@ func main() {
 						Usage: "clean output directory",
 					},
 					// TODO blockquotes
+					// TODO support metadata inside of the markdown files, which can override h1
 					// TODO download theme command (literally go and fetch latest from GitHub)
 				},
 				Usage:  "generate static website",

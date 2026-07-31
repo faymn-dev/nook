@@ -56,7 +56,6 @@ var tokenVariantToString = map[TokenVariant]string{
 	TokenRParen:        ")",
 	TokenLBracket:      "[",
 	TokenRBracket:      "]",
-	TokenBlockquote:    ">",
 }
 
 func (t Token) String() string {

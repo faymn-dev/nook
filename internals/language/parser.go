@@ -57,11 +57,11 @@ loop:
 		case TokenSeparator:
 			p.appendChild(node.NewHTMLNode("br", nil))
 		case TokenListItem:
-			parentList := p.tryParseList("ul", TokenListItem)
-			p.appendChild(parentList)
+			p.appendChild(p.tryParseList("ul", TokenListItem))
 		case TokenNumberedListItem:
-			parentList := p.tryParseList("ol", TokenNumberedListItem)
-			p.appendChild(parentList)
+			p.appendChild(p.tryParseList("ol", TokenNumberedListItem))
+		case TokenBlockquote:
+			p.appendChild(p.tryParseBlockquote())
 		default:
 			p.appendToParagraph(current)
 		}
@@ -220,6 +220,87 @@ func (p *parser) tryParseBrackets() *parsedBrackets {
 	return result
 }
 
+// badly modified tryParseList method
+func (p *parser) tryParseBlockquote() node.Renderer {
+	// try to figure out where the list ends
+	currentlyInBlockquote := true
+	endBlockquoteIndex := -1
+	for i := range len(p.data) - 1 {
+		token := p.data[i]
+		nextToken := p.data[i+1]
+
+		switch token.Variant {
+		case TokenNewline:
+			currentlyInBlockquote = false
+		case TokenBlockquote:
+			// note: indents are guaranteed to be at the start of the line
+			currentlyInBlockquote = true
+		}
+
+		if !currentlyInBlockquote && nextToken.Variant != TokenBlockquote {
+			endBlockquoteIndex = i
+			break
+		}
+	}
+
+	if endBlockquoteIndex == -1 {
+		return nil
+	}
+
+	type listContext struct {
+		level int
+		list  *node.HTMLNode
+	}
+
+	tokens := p.data[:endBlockquoteIndex:endBlockquoteIndex]
+	tokens = append(tokens, Token{Variant: TokenEOF})
+	bqParser := &parser{
+		Stream: Stream[Token]{
+			data: tokens,
+		},
+	}
+
+	parentBqNode := node.NewHTMLNode("blockquote", nil)
+	stack := []listContext{{level: 1, list: parentBqNode}}
+	// why is this level 1 whereas in the list, we start at level 0?
+	// intuitively, this is because a Token of ">" is guaranteed to be of level 1, whereas a list item with no identation is at level 0
+
+	// given the parent (ctx), parse each incoming list item
+	for bqParser.Current().Variant == TokenBlockquote {
+		level := 0
+		if bqParser.Current().Variant == TokenBlockquote {
+			level = len(bqParser.Current().Value)
+			bqParser.Next() // skip blockquote
+		}
+
+		contentNode := bqParser.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
+		bqParser.Next() // skip new line
+		pNode := node.NewHTMLNode("p", nil, contentNode.GetChildren()...)
+
+		// decide where the pNode should go
+		top := stack[len(stack)-1]
+		if level > top.level { // deeper level, so add it to top
+			childBqNode := node.NewHTMLNode("blockquote", nil)
+			top.list.Children = append(top.list.Children, childBqNode)
+			stack = append(stack, listContext{
+				list:  childBqNode,
+				level: level,
+			})
+		} else if level < top.level { // pop until we find context at/above level
+			for len(stack) > 1 && stack[len(stack)-1].level >= level {
+				stack = stack[:len(stack)-1]
+			}
+		}
+
+		currentBq := stack[len(stack)-1].list
+		currentBq.Children = append(currentBq.Children, pNode)
+	}
+
+	p.data = p.data[endBlockquoteIndex:]
+
+	return parentBqNode
+}
+
 // TODO refactor this method
 // I've just wrapped the old logic by just creating another internal parser just for lists
 // there is undoubtedly a better way using just indexes (use the other "try" methods for reference)
@@ -254,7 +335,7 @@ func (p *parser) tryParseList(tagName string, listItemVariant TokenVariant) node
 		list  *node.HTMLNode
 	}
 
-	tokens := p.data[:endListIndex]
+	tokens := p.data[:endListIndex:endListIndex]
 	tokens = append(tokens, Token{Variant: TokenEOF})
 	listParser := &parser{
 		Stream: Stream[Token]{
@@ -266,7 +347,7 @@ func (p *parser) tryParseList(tagName string, listItemVariant TokenVariant) node
 	stack := []listContext{{level: 0, list: parentList}}
 
 	// given the parent (ctx), parse each incoming list item
-	for {
+	for listParser.Current().Variant == TokenIndent || listParser.Current().Variant == listItemVariant {
 		level := 0
 		if listParser.Current().Variant == TokenIndent {
 			level = len(listParser.Current().Value) / indentSize
@@ -309,10 +390,6 @@ func (p *parser) tryParseList(tagName string, listItemVariant TokenVariant) node
 		// add list item to current list
 		currentList := stack[len(stack)-1].list
 		currentList.Children = append(currentList.Children, liNode)
-
-		if !(listParser.Current().Variant == TokenIndent || listParser.Current().Variant == listItemVariant) {
-			break
-		}
 	}
 
 	p.data = p.data[endListIndex:]

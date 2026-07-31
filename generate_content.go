@@ -76,7 +76,7 @@ func generateContentAction(_ context.Context, cmd *cli.Command) error {
 		}
 
 		if ext == ".css" {
-			styles = append(styles, p)
+			styles = append(styles, rel)
 		}
 
 		// otherwise copy a static asset

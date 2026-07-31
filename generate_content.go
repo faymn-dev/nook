@@ -16,7 +16,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func generateContent(_ context.Context, cmd *cli.Command) error {
+func generateContentAction(_ context.Context, cmd *cli.Command) error {
 	inputDir := cmd.StringArg("input-directory")
 	outputDir := cmd.String("output-directory")
 
@@ -27,7 +27,7 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 	}
 
 	// ensure output directory exists
-	err := os.MkdirAll(outputDir, permission)
+	err := os.MkdirAll(outputDir, defaultPermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -56,7 +56,7 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 		outputPath := filepath.Join(outputDir, rel)
 
 		if d.IsDir() { // "copy" directory, but not its contents
-			return os.MkdirAll(outputPath, permission)
+			return os.MkdirAll(outputPath, defaultPermissions)
 		}
 
 		ext := filepath.Ext(d.Name())
@@ -107,7 +107,7 @@ func generateContent(_ context.Context, cmd *cli.Command) error {
 					return
 				}
 
-				err = os.WriteFile(replaceExtension(item.outputFile, ".html"), renderDocument(styles, string(markdown)), permission)
+				err = os.WriteFile(replaceExtension(item.outputFile, ".html"), renderDocument(styles, string(markdown)), defaultPermissions)
 
 				if err != nil {
 					log.Printf("failed to write %s: %v", item.inputFile, err)

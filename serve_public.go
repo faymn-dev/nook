@@ -7,7 +7,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func servePublic(context.Context, *cli.Command) error {
+func servePublicAction(context.Context, *cli.Command) error {
 	mux := http.NewServeMux()
 
 	mux.Handle("/", http.FileServer(http.Dir("public")))

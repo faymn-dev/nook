@@ -8,7 +8,7 @@ import (
 )
 
 const numWorkers = 5
-const permission = 0755
+const defaultPermissions = 0755
 
 func main() {
 	cmd := &cli.Command{
@@ -25,12 +25,6 @@ func main() {
 					},
 				},
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:    "output-directory",
-						Aliases: []string{"out"},
-						Value:   "public",
-						Usage:   "where to output generated content and copied assets",
-					},
 					&cli.BoolFlag{
 						Name:  "copy-markdown",
 						Value: false,
@@ -41,12 +35,16 @@ func main() {
 						Value: false,
 						Usage: "clean output directory",
 					},
-					// TODO blockquotes
+					&cli.StringFlag{
+						Name:    "output-directory",
+						Aliases: []string{"out"},
+						Value:   "public",
+						Usage:   "where to output generated content and copied assets",
+					},
 					// TODO support metadata inside of the markdown files, which can override h1
-					// TODO download theme command (literally go and fetch latest from GitHub)
 				},
 				Usage:  "generate static website",
-				Action: generateContent,
+				Action: generateContentAction,
 			},
 			{
 				Name:  "theme",
@@ -54,23 +52,23 @@ func main() {
 				Arguments: []cli.Argument{
 					&cli.StringArg{
 						Name:  "name",
-						Value: "classic",
+						Value: "classic.css",
 					},
 				},
-				Action: downloadTheme,
+				Action: downloadThemeAction,
 				Commands: []*cli.Command{
 					{
 						Name:    "list",
 						Aliases: []string{"ls"},
 						Usage:   "list available themes",
-						Action:  listThemes,
+						Action:  listThemesAction,
 					},
 				},
 			},
 			{
 				Name:   "serve",
 				Usage:  "serve the contents of the public directory",
-				Action: servePublic,
+				Action: servePublicAction,
 			},
 		},
 	}

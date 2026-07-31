@@ -34,5 +34,5 @@ The classic `nook` theme can be downloaded like so:
 
 ```bash
 nook theme classic
-# downloads to nook.css
+# downloads to theme.css
 ```

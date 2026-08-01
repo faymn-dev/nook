@@ -92,7 +92,7 @@ func TestInlineParser(t *testing.T) {
 				{Variant: TokenEOF},
 			},
 			Output: node.NewHTMLFragment(
-				node.NewHTMLNode("a", map[string]string{"href": "https://google.com"},
+				node.NewHTMLNode("a", node.HTMLProps{"href": "https://google.com", "rel": "noopener noreferrer", "target": "_blank"},
 					node.TextNode("Google"),
 				),
 			),
@@ -106,12 +106,12 @@ func TestInlineParser(t *testing.T) {
 				{Variant: TokenStar},
 				{Variant: TokenRBracket},
 				{Variant: TokenLParen},
-				{Variant: TokenString, Value: "https://example.com"},
+				{Variant: TokenString, Value: "/README.html"},
 				{Variant: TokenRParen},
 				{Variant: TokenEOF},
 			},
 			Output: node.NewHTMLFragment(
-				node.NewHTMLNode("a", map[string]string{"href": "https://example.com"},
+				node.NewHTMLNode("a", node.HTMLProps{"href": "/README.html"},
 					node.NewHTMLNode("em", nil,
 						node.TextNode("italic link"),
 					),
@@ -131,7 +131,7 @@ func TestInlineParser(t *testing.T) {
 				{Variant: TokenEOF},
 			},
 			Output: node.NewHTMLFragment(
-				node.NewHTMLNode("img", map[string]string{
+				node.NewHTMLNode("img", node.HTMLProps{
 					"src": "https://example.com/image.png",
 					"alt": "Alt text",
 				}),
@@ -150,13 +150,13 @@ func TestInlineParser(t *testing.T) {
 				{Variant: TokenRParen},
 				{Variant: TokenRBracket},
 				{Variant: TokenLParen},
-				{Variant: TokenString, Value: "https://example.com"},
+				{Variant: TokenString, Value: "/README.html"},
 				{Variant: TokenRParen},
 				{Variant: TokenEOF},
 			},
 			Output: node.NewHTMLFragment(
-				node.NewHTMLNode("a", map[string]string{"href": "https://example.com"},
-					node.NewHTMLNode("img", map[string]string{
+				node.NewHTMLNode("a", node.HTMLProps{"href": "/README.html"},
+					node.NewHTMLNode("img", node.HTMLProps{
 						"src": "https://example.com/image.png",
 						"alt": "Clickable Image",
 					}),
@@ -175,7 +175,7 @@ func TestInlineParser(t *testing.T) {
 				{Variant: TokenEOF},
 			},
 			Output: node.NewHTMLFragment(
-				node.NewHTMLNode("img", map[string]string{
+				node.NewHTMLNode("img", node.HTMLProps{
 					"src": "https://example.com/photo.jpg",
 					"alt": "",
 				}),

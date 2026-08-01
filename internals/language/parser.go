@@ -3,6 +3,7 @@ package language
 import (
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/faymn-dev/nook/internals/node"
 )
@@ -189,7 +190,13 @@ func (p *parser) tryParseLink() node.Renderer {
 	label := inlineParse(parsedBrackets.label)
 	href := stringifyTokens(parsedBrackets.url)
 
-	return node.NewHTMLNode("a", node.HTMLProps{"href": href}, label.GetChildren()...)
+	props := node.HTMLProps{"href": href}
+	if strings.HasPrefix(href, "https://") {
+		props["target"] = "_blank"
+		props["rel"] = "noopener noreferrer"
+	}
+
+	return node.NewHTMLNode("a", props, label.GetChildren()...)
 }
 
 type parsedBrackets struct {

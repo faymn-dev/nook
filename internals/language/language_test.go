@@ -22,7 +22,7 @@ func TestLanguage(t *testing.T) {
 		{
 			Name:   "text to text nodes",
 			Input:  "This is **text** with an *italic* word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)",
-			Output: `<p>This is <strong>text</strong> with an <em>italic</em> word and a <code>code block</code> and an <img alt="obi wan image" src="https://i.imgur.com/fJRm4Vk.jpeg" /> and a <a href="https://boot.dev">link</a></p>`,
+			Output: `<p>This is <strong>text</strong> with an <em>italic</em> word and a <code>code block</code> and an <img alt="obi wan image" src="https://i.imgur.com/fJRm4Vk.jpeg" /> and a <a href="https://boot.dev" rel="noopener noreferrer" target="_blank">link</a></p>`,
 		},
 		{
 			Name:   "paragraphs",

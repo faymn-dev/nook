@@ -26,43 +26,30 @@ loop:
 			continue
 		}
 
+		var result node.Renderer
+
 		// this are "blocks", meaning the previous token must be a newline
 		switch current.Variant {
 		case TokenEOF:
 			break loop
 		case TokenNewline:
 		case TokenHeading:
-			level := min(len(current.Value), 7)
-			p.Next() // skip heading
-
-			textNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
-			tagName := fmt.Sprintf("h%d", level)
-			p.appendChild(node.NewHTMLNode(tagName, nil, textNode))
+			result = p.tryParseHeading()
 		case TokenCodeBlock:
-			var language string
-			if p.Peek().Variant == TokenString {
-				language = p.Next().Value
-			}
-
-			p.Next() // skip code block
-			if p.Current().Variant == TokenNewline {
-				p.Next()
-			}
-
-			codeTokens := p.collectUntil(TokenCodeBlock)
-			code := stringifyTokens(trimTokens(codeTokens, TokenNewline))
-			p.appendChild(node.NewHTMLNode("pre", node.HTMLProps{"data-language": language},
-				node.NewHTMLNode("code", nil, node.TextNode(code)),
-			))
+			result = p.parseCodeBlock()
 		case TokenSeparator:
-			p.appendChild(node.NewHTMLNode("br", nil))
+			result = node.NewHTMLNode("br", nil)
 		case TokenListItem:
-			p.appendChild(p.tryParseList("ul", TokenListItem))
+			result = p.tryParseList("ul", TokenListItem)
 		case TokenNumberedListItem:
-			p.appendChild(p.tryParseList("ol", TokenNumberedListItem))
+			result = p.tryParseList("ol", TokenNumberedListItem)
 		case TokenBlockquote:
-			p.appendChild(p.tryParseBlockquote())
-		default:
+			result = p.tryParseBlockquote()
+		}
+
+		if result != nil {
+			p.appendChild(result)
+		} else {
 			p.appendToParagraph(current)
 		}
 
@@ -132,6 +119,42 @@ func newParser(tokens []Token) *parser {
 		},
 		document: node.NewHTMLFragment(),
 	}
+}
+
+func (p *parser) tryParseHeading() node.Renderer {
+	current := p.Current()
+	if current.Variant != TokenHeading {
+		return nil
+	}
+
+	level := min(len(current.Value), 7)
+	p.Next() // skip heading
+
+	textNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
+	tagName := fmt.Sprintf("h%d", level)
+	return node.NewHTMLNode(tagName, nil, textNode)
+}
+
+func (p *parser) parseCodeBlock() node.Renderer {
+	// TODO should this behavior change?
+	// atm this does actually process tokens
+	// the other methods don't until the very end when a result is made
+	var language string
+	if p.Peek().Variant == TokenString {
+		language = p.Next().Value
+	}
+
+	p.Next() // skip code block
+	if p.Current().Variant != TokenNewline {
+		return nil
+	}
+	p.Next()
+
+	codeTokens := p.collectUntil(TokenCodeBlock)
+	code := stringifyTokens(trimTokens(codeTokens, TokenNewline))
+	return node.NewHTMLNode("pre", node.HTMLProps{"data-language": language},
+		node.NewHTMLNode("code", nil, node.TextNode(code)),
+	)
 }
 
 func (p *parser) tryParseImage() node.Renderer {

@@ -2,6 +2,7 @@ package language
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/faymn-dev/nook/internals/node"
 )
@@ -132,13 +133,18 @@ func (p *parser) tryParseHeading() node.Renderer {
 
 	textNode := p.collectUntilThenInlineParse(TokenNewline, trimStartingSpace)
 	tagName := fmt.Sprintf("h%d", level)
-	return node.NewHTMLNode(tagName, nil, textNode)
+	result := node.NewHTMLNode(tagName, nil, textNode)
+	result.Props = node.HTMLProps{
+		"id": url.QueryEscape(result.TextContent()),
+	}
+	return result
 }
 
 func (p *parser) parseCodeBlock() node.Renderer {
 	// TODO should this behavior change?
 	// atm this does actually process tokens
 	// the other methods don't until the very end when a result is made
+	// so nil means nothing actually happened - but this DOES consume tokens
 	var language string
 	if p.Peek().Variant == TokenString {
 		language = p.Next().Value

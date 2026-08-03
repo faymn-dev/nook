@@ -79,6 +79,7 @@ loop:
 		switch current.Variant {
 		case TokenEOF:
 			break loop
+		case TokenNewline:
 		case TokenStar:
 			result = p.trySymmetricParse(TokenStar, true, []string{"em"})
 		case TokenDoubleStar:
@@ -157,7 +158,7 @@ func (p *parser) parseCodeBlock() node.Renderer {
 	}
 	p.Next()
 
-	codeTokens := p.collectUntil(TokenCodeBlock)
+	codeTokens := p.collectUntil(TokenCodeBlock) // ```
 	code := stringifyTokens(trimTokens(codeTokens, TokenNewline))
 	return node.NewHTMLNode("pre", node.HTMLProps{"data-language": language},
 		node.NewHTMLNode("code", nil, node.TextNode(code)),
@@ -490,7 +491,7 @@ func (p *parser) collectUntilThenInlineParse(tokenVariant TokenVariant, preproce
 
 func (p *parser) flush() {
 	if !isEmpty(p.paragraph) {
-		children := inlineParse(p.paragraph)
+		children := inlineParse(trimTokens(p.paragraph, TokenNewline))
 		p.document.Children = append(p.document.Children, node.NewHTMLNode("p", nil, children.GetChildren()...))
 		if p.paragraph[len(p.paragraph)-1].Variant == TokenIndent {
 			p.document.Children = append(p.document.Children, node.NewHTMLNode("br", nil))

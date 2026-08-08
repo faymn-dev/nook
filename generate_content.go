@@ -20,16 +20,16 @@ func generateContentAction(_ context.Context, cmd *cli.Command) error {
 	inputDir := cmd.StringArg("input-directory")
 	outputDir := cmd.String("output-directory")
 
-	if cmd.Bool("clean") {
-		if err := removeContents(outputDir); err != nil {
-			return fmt.Errorf("failed to clean output directory: %w", err)
-		}
-	}
-
 	// ensure output directory exists
 	err := os.MkdirAll(outputDir, defaultPermissions)
 	if err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	if cmd.Bool("clean") {
+		if err := removeContents(outputDir); err != nil {
+			return fmt.Errorf("failed to clean output directory: %w", err)
+		}
 	}
 
 	queue := []queueItem{}
